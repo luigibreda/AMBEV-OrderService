@@ -32,7 +32,7 @@ public class RabbitMqOrderConsumer : BackgroundService
         // Isso evita que a aplicação falhe ao iniciar se o RabbitMQ estiver offline.
         _connectionFactory = new ConnectionFactory
         {
-            HostName = "localhost", // ou use IConfiguration para pegar de appsettings.json
+            HostName = "rabbitmq", // ou use IConfiguration para pegar de appsettings.json
             DispatchConsumersAsync = true // Essencial para o consumidor assíncrono
         };
     }

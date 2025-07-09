@@ -22,20 +22,28 @@ Para executar o projeto localmente, você precisará ter o [Docker](https://www.
 
 1.  **Clone o repositório:**
     ```bash
-    git clone [URL_DO_SEU_REPOSITORIO]
+    git clone https://github.com/luigibreda/AMBEV-OrderService
     cd AMBEV-OrderService
     ```
 2.  **Configure o arquivo `appsettings.json` (se necessário):**
-    Verifique a string de conexão do PostgreSQL. Por padrão, ele usa `Host=localhost;Port=5432;Database=ambev_orders;Username=admin;Password=admin;`. Se você mudou as credenciais do PostgreSQL no `docker-compose.yml`, ajuste aqui.
+    Verifique a string de conexão do PostgreSQL. Por padrão, ele usa `Host=localhost;Port=5432;Database=ambev_orders;Username=admin;Password=admin`. Se você mudou as credenciais do PostgreSQL no `docker-compose.yml`, ajuste aqui.
+
     **Importante:** Para logs de console limpos e focados na performance, certifique-se de que no `appsettings.json` ou `appsettings.Development.json` você tenha:
+    
     ```json
+    {
     "Logging": {
-      "LogLevel": {
+        "LogLevel": {
         "Default": "Information",
         "Microsoft.AspNetCore": "Warning",
         "Microsoft.EntityFrameworkCore": "Warning",
-        "Microsoft.EntityFrameworkCore.Database.Command": "Warning" // Esta linha é crucial para remover logs de SQL
-      }
+        "Microsoft.EntityFrameworkCore.Database.Command": "Warning"
+        }
+    },
+    "ConnectionStrings": {
+        "DefaultConnection": "Host=localhost;Port=5432;Database=ambev_orders;Username=admin;Password=admin"
+    },
+    "AllowedHosts": "*"
     }
     ```
 
