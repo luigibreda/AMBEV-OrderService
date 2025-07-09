@@ -1,6 +1,6 @@
 using System.Text;
 using System.Text.Json;
-using AMBEV_OrderService.Enums;
+using OrderService.Enums;
 using Microsoft.AspNetCore.Connections;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;

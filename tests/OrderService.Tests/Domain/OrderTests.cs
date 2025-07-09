@@ -1,4 +1,3 @@
-// OrderService.Tests/Domain/OrderTests.cs
 using OrderService.Models;
 using Xunit;
 using FluentAssertions;
@@ -8,7 +7,6 @@ public class OrderTests
     [Fact]
     public void CalculateTotalValue_Should_SumProductTotals_Correctly()
     {
-        // Arrange (Preparar)
         var order = new Order
         {
             Products = new List<Product>
@@ -19,10 +17,8 @@ public class OrderTests
             }
         };
 
-        // Act (Agir)
         order.CalculateTotalValue();
 
-        // Assert (Verificar)
         decimal expectedTotal = 30.50m;
         order.TotalValue.Should().Be(expectedTotal);
     }
@@ -30,16 +26,13 @@ public class OrderTests
     [Fact]
     public void CalculateTotalValue_Should_BeZero_When_ProductsListIsEmpty()
     {
-        // Arrange
         var order = new Order
         {
             Products = new List<Product>()
         };
 
-        // Act
         order.CalculateTotalValue();
 
-        // Assert
         order.TotalValue.Should().Be(0);
     }
 }

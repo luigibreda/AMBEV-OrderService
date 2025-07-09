@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using OrderService.Data;
 using OrderService.DTOs;
 using OrderService.Models;
-using AMBEV_OrderService.Enums;
+using OrderService.Enums;
 using System.Diagnostics;
 
 // Usando o namespace correto para seus serviços

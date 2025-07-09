@@ -80,6 +80,20 @@ Para garantir a qualidade, a manutenibilidade e a corretude da solução, o proj
 2.  **Testes de Integração:** Validam a interação entre os componentes da aplicação e a infraestrutura, especialmente o banco de dados. Utilizamos a biblioteca **Testcontainers** para iniciar um contêiner PostgreSQL real para cada execução de teste, garantindo que nossas queries e a configuração do EF Core funcionem corretamente com o banco de dados de produção.
 3.  **Testes End-to-End (E2E):** Validam o fluxo completo do sistema. Estes testes iniciam contêineres para o **PostgreSQL** e o **RabbitMQ**, enviam uma requisição para a API de ingestão, aguardam o processamento assíncrono pela fila e pelo consumidor, e finalmente verificam se o dado foi persistido corretamente ao consultar a API de leitura. Isso prova que toda a arquitetura está funcionando de ponta a ponta.
 
+---
+
+### Exemplos de Testes Disponíveis
+
+![Lista de testes disponíveis](docs/screenshots/resultado_testes.png)
+
+---
+
+### Resultado da Execução dos Testes
+
+![Resultado dos testes](docs/screenshots/lista_testes.png)
+
+---
+
 ### Como Executar os Testes
 
 Para executar a suíte completa de testes automatizados, navegue até a pasta raiz da solução (onde o arquivo `OrderService.sln` está localizado) e execute o seguinte comando no seu terminal:

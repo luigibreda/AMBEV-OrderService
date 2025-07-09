@@ -1,4 +1,4 @@
-namespace AMBEV_OrderService.Enums
+namespace OrderService.Enums
 {
     public enum OrderStatus
     {
