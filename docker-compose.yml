@@ -35,7 +35,7 @@ services:
   # Serviço para sua aplicação .NET (OrderService)
   orderservice:
     build:
-      context: . # Onde encontrar o Dockerfile (pasta atual)
+      context: ./src/OrderService.Api # Onde encontrar o Dockerfile (pasta atual)
       dockerfile: Dockerfile # Nome do Dockerfile
     restart: always
     ports:

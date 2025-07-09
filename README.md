@@ -70,6 +70,25 @@ Para executar o projeto localmente, você precisará ter o [Docker](https://www.
 
 ---
 
+## Testes Automatizados e Qualidade do Código
+
+Para garantir a qualidade, a manutenibilidade e a corretude da solução, o projeto inclui uma suíte de testes automatizados, localizada no projeto `OrderService.Tests`. A estratégia de testes abrange diferentes níveis para validar desde a lógica de negócio isolada até o fluxo completo do sistema.
+
+### Tipos de Testes Implementados
+
+1.  **Testes de Unidade:** Focam em validar pequenas unidades de lógica de negócio de forma isolada, como as regras de cálculo no modelo de `Order`. São rápidos e garantem que os componentes individuais se comportem como esperado.
+2.  **Testes de Integração:** Validam a interação entre os componentes da aplicação e a infraestrutura, especialmente o banco de dados. Utilizamos a biblioteca **Testcontainers** para iniciar um contêiner PostgreSQL real para cada execução de teste, garantindo que nossas queries e a configuração do EF Core funcionem corretamente com o banco de dados de produção.
+3.  **Testes End-to-End (E2E):** Validam o fluxo completo do sistema. Estes testes iniciam contêineres para o **PostgreSQL** e o **RabbitMQ**, enviam uma requisição para a API de ingestão, aguardam o processamento assíncrono pela fila e pelo consumidor, e finalmente verificam se o dado foi persistido corretamente ao consultar a API de leitura. Isso prova que toda a arquitetura está funcionando de ponta a ponta.
+
+### Como Executar os Testes
+
+Para executar a suíte completa de testes automatizados, navegue até a pasta raiz da solução (onde o arquivo `OrderService.sln` está localizado) e execute o seguinte comando no seu terminal:
+
+```bash
+dotnet test
+```
+
+
 ## Demonstração da Viabilidade e Escalabilidade: Provas e Métricas de Performance
 
 Esta seção apresenta evidências concretas da capacidade do sistema em lidar com alta volumetria, garantindo disponibilidade, consistência e evitando gargalos.
