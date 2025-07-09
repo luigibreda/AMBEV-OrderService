@@ -7,6 +7,7 @@ using OrderService.Data;
 using OrderService.DTOs;
 using OrderService.Models;
 using AMBEV_OrderService.Enums;
+using System.Diagnostics;
 
 // Usando o namespace correto para seus serviços
 namespace OrderService.Consumers;
@@ -18,6 +19,9 @@ public class RabbitMqOrderConsumer : BackgroundService
     private readonly ConnectionFactory _connectionFactory;
     private IConnection _connection;
     private IModel _channel;
+    private int _processedOrdersCount = 0;
+    private Stopwatch _processingStopwatch = new Stopwatch();
+    private const int LogIntervalOrders = 1000;
     
     public RabbitMqOrderConsumer(IServiceScopeFactory scopeFactory, ILogger<RabbitMqOrderConsumer> logger)
     {
@@ -48,6 +52,9 @@ public class RabbitMqOrderConsumer : BackgroundService
                 // Tenta conectar e configurar o consumidor.
                 ConnectAndConfigureConsumer(stoppingToken);
 
+                _processedOrdersCount = 0;
+                _processingStopwatch.Restart(); 
+
                 _logger.LogInformation("Consumidor conectado e aguardando mensagens.");
 
                 // Mantém o serviço 'vivo' enquanto o token de cancelamento não for acionado.
@@ -62,6 +69,7 @@ public class RabbitMqOrderConsumer : BackgroundService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Não foi possível conectar ao RabbitMQ. Tentando novamente em 10 segundos...");
+                _processingStopwatch.Stop(); 
                 // Espera um tempo antes de tentar reconectar para não sobrecarregar.
                 await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
             }
@@ -151,7 +159,16 @@ public class RabbitMqOrderConsumer : BackgroundService
             dbContext.Orders.Add(order);
             await dbContext.SaveChangesAsync();
 
-            _logger.LogInformation("Pedido com ExternalId {ExternalId} processado e salvo com sucesso.", order.ExternalId);
+            Interlocked.Increment(ref _processedOrdersCount); // Incrementa o contador de forma thread-safe
+
+            // Log de performance intermediário
+            if (_processedOrdersCount % LogIntervalOrders == 0)
+            {
+                var elapsedMs = _processingStopwatch.ElapsedMilliseconds;
+                var ordersPerSecond = elapsedMs > 0 ? (_processedOrdersCount / (elapsedMs / 1000.0)) : 0;
+                _logger.LogInformation("Processados {ProcessedCount} pedidos em {ElapsedMs:0} ms. Taxa: {Rate:0.##} pedidos/segundo.",
+                                    _processedOrdersCount, elapsedMs, ordersPerSecond);
+            }
 
             // Confirma o processamento (ACK - Acknowledge). A mensagem será removida da fila.
             _channel.BasicAck(ea.DeliveryTag, false);
@@ -178,9 +195,31 @@ public class RabbitMqOrderConsumer : BackgroundService
         }
     }
 
+    private void LogFinalPerformance()
+    {
+        if (_processedOrdersCount > 0 && _processingStopwatch.ElapsedMilliseconds > 0)
+        {
+            var elapsedMs = _processingStopwatch.ElapsedMilliseconds;
+            var ordersPerSecond = (_processedOrdersCount / (elapsedMs / 1000.0));
+            _logger.LogInformation("--- Performance Final de Processamento do Consumidor ---");
+            _logger.LogInformation("Total de Pedidos Processados: {TotalProcessed}", _processedOrdersCount);
+            _logger.LogInformation("Tempo Total de Processamento: {ElapsedSeconds:0.##} segundos ({ElapsedMs:0} ms)", elapsedMs / 1000.0, elapsedMs);
+            _logger.LogInformation("Taxa Média de Processamento: {AverageRate:0.##} pedidos/segundo", ordersPerSecond);
+            _logger.LogInformation("-------------------------------------------------------");
+        }
+        else if (_processedOrdersCount == 0 && _processingStopwatch.ElapsedMilliseconds > 0)
+        {
+            _logger.LogInformation("Nenhum pedido processado durante este ciclo de vida do consumidor (Tempo decorrido: {ElapsedMs:0} ms).", _processingStopwatch.ElapsedMilliseconds);
+        }
+    }
+
     public override void Dispose()
     {
         _logger.LogInformation("Dispondo recursos do consumidor.");
+
+        _processingStopwatch.Stop(); 
+        LogFinalPerformance();
+
         _channel?.Close();
         _channel?.Dispose();
         _connection?.Close();
