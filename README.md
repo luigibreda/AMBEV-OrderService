@@ -154,6 +154,14 @@ A solução demonstra uma taxa de processamento robusta, superando o requisito m
 
 ---
 
+## Evolução da Arquitetura e Desenho Detalhado
+
+O diagrama abaixo representa a arquitetura final e evoluída do sistema de gerenciamento de pedidos, incorporando todas as melhorias e otimizações discutidas, incluindo a separação de responsabilidades (CQRS), o uso de um Message Broker (RabbitMQ) e a consideração de um cache distribuído (Redis) para consultas.
+
+Este desenho reflete a maturidade e a robustez da solução proposta para lidar com alta volumetria e garantir a disponibilidade e consistência dos dados.
+
+![Arquitetura Final Detalhada](docs/screenshots/arquitetura_final_detalhada.png)
+
 ## Conclusão
 
 Este serviço de gerenciamento de pedidos foi projetado e validado para atender aos desafios de alta volumetria, com foco em disponibilidade através do desacoplamento assíncrono, consistência de dados garantida por regras de negócio e banco de dados, e escalabilidade comprovada pela capacidade de processamento observada.
