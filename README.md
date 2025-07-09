@@ -59,6 +59,15 @@ Para executar o projeto localmente, você precisará ter o [Docker](https://www.
 5.  **Acesse o RabbitMQ Management UI:**
     `http://localhost:15672` (Usuário: `guest`, Senha: `guest`)
 
+6.  **Ponto Chave: Endpoint de Teste de Carga (`/orders/generate-test-orders`)**
+    Como um diferencial para validar a capacidade do sistema, foi implementado um endpoint exclusivo para simular a ingestão de um grande volume de pedidos. Isso permite observar a performance, disponibilidade e resiliência em um cenário de alta carga.
+
+    *   **Endpoint:** `POST /orders/generate-test-orders`
+    *   **Parâmetros (Body JSON):**
+        *   `count` (int): Número total de pedidos a serem gerados (ex: 50000, 100000).
+        *   `productsPerOrder` (int, default: 3): Média de produtos por pedido (para variar a complexidade).
+        *   `delayMs` (int, default: 0): Atraso em milissegundos entre a publicação de cada pedido. Use `0` para simular um "burst" de pedidos e testar o pico de capacidade.
+
 ---
 
 ## Demonstração da Viabilidade e Escalabilidade: Provas e Métricas de Performance
