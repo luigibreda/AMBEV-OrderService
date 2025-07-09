@@ -73,4 +73,63 @@ public class OrdersController : ControllerBase
 
         return Ok(response);
     }
+
+    [HttpGet]
+    public async Task<IActionResult> GetOrders([FromQuery] OrderQueryParams query)
+    {
+        var queryable = _context.Orders
+            .Include(o => o.Products)
+            .AsQueryable();
+
+        if (!string.IsNullOrEmpty(query.Status))
+            queryable = queryable.Where(o => o.Status == query.Status);
+
+        if (query.StartDate.HasValue)
+        {
+            var startUtc = DateTime.SpecifyKind(query.StartDate.Value, DateTimeKind.Utc);
+            queryable = queryable.Where(o => o.CreatedAt >= startUtc);
+        }
+
+        if (query.EndDate.HasValue)
+        {
+            var endUtc = DateTime.SpecifyKind(
+                query.EndDate.Value.Date.AddDays(1).AddTicks(-1), // 23:59:59.9999999
+                DateTimeKind.Utc
+            );
+
+            queryable = queryable.Where(o => o.CreatedAt <= endUtc);
+        }
+
+        var totalItems = await queryable.CountAsync();
+
+        var orders = await queryable
+            .OrderByDescending(o => o.CreatedAt)
+            .Skip((query.Page - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .ToListAsync();
+
+        var response = orders.Select(order => new OrderResponse
+        {
+            ExternalId = order.ExternalId,
+            TotalValue = order.TotalValue,
+            Status = order.Status,
+            CreatedAt = order.CreatedAt,
+            Products = order.Products.Select(p => new ProductResponse
+            {
+                Name = p.Name,
+                Quantity = p.Quantity,
+                UnitPrice = p.UnitPrice,
+                Total = p.Total
+            }).ToList()
+        });
+
+        return Ok(new
+        {
+            totalItems,
+            query.Page,
+            query.PageSize,
+            data = response
+        });
+    }
+
 }
