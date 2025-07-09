@@ -1,5 +1,5 @@
-using RabbitMQ.Client;          // Essencial para IModel, IConnection, ConnectionFactory
-using RabbitMQ.Client.Events;   // Essencial para AsyncEventingBasicConsumer, BasicDeliverEventArgs
+using RabbitMQ.Client;          
+using RabbitMQ.Client.Events;   
 using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
@@ -19,7 +19,6 @@ public class RabbitMqOrderConsumer : BackgroundService
     private IConnection _connection;
     private IModel _channel;
     
-    // As dependências são injetadas, incluindo o ILogger para boas práticas de log.
     public RabbitMqOrderConsumer(IServiceScopeFactory scopeFactory, ILogger<RabbitMqOrderConsumer> logger)
     {
         _scopeFactory = scopeFactory;

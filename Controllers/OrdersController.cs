@@ -18,6 +18,7 @@ public class OrdersController : ControllerBase
     private readonly AppDbContext _context;
     private readonly ConnectionFactory _connectionFactory;
     private readonly ILogger<OrdersController> _logger;
+    private readonly Random _random = new Random();
 
     public OrdersController(AppDbContext context, ConnectionFactory connectionFactory, ILogger<OrdersController> logger)
     {
@@ -34,16 +35,13 @@ public class OrdersController : ControllerBase
         {
             return BadRequest("Payload do pedido é inválido.");
         }
-        
+
         try
         {
-            // A controller agora delega o trabalho pesado. Ela só publica na fila.
             using var connection = _connectionFactory.CreateConnection();
             using var channel = connection.CreateModel();
 
             const string queueName = "orders";
-            // A declaração da fila aqui garante que ela existe.
-            // É importante que os parâmetros (durable, arguments) sejam os mesmos do consumidor.
             channel.QueueDeclare(queue: queueName,
                                  durable: true,
                                  exclusive: false,
@@ -57,7 +55,7 @@ public class OrdersController : ControllerBase
             var body = Encoding.UTF8.GetBytes(json);
 
             var properties = channel.CreateBasicProperties();
-            properties.Persistent = true; // Torna a mensagem durável
+            properties.Persistent = true;
 
             channel.BasicPublish(exchange: "",
                                  routingKey: queueName,
@@ -65,9 +63,6 @@ public class OrdersController : ControllerBase
                                  body: body);
 
             _logger.LogInformation("Pedido com ExternalId {ExternalId} recebido e publicado na fila.", request.ExternalId);
-
-            // Resposta 202 Accepted: A solicitação foi aceita para processamento, mas o processamento não foi concluído.
-            // Esta é a resposta HTTP correta para um fluxo assíncrono.
             return Accepted(value: new { message = $"Pedido {request.ExternalId} recebido e enfileirado para processamento." });
         }
         catch (Exception ex)
@@ -170,6 +165,93 @@ public class OrdersController : ControllerBase
             query.PageSize,
             data = response
         });
+    }
+
+    [HttpPost("generate-test-orders")] 
+    public IActionResult GenerateTestOrders([FromBody] GenerateOrdersRequest request)
+    {
+        if (request.Count <= 0 || request.Count > 1000000) // Limite razoável para evitar abuso
+        {
+            return BadRequest("O número de pedidos deve estar entre 1 e 1.000.000.");
+        }
+
+        // Esta é uma operação de longa duração, então executamos em uma Thread separada
+        // para não bloquear a requisição HTTP.
+        _ = Task.Run(async () =>
+        {
+            _logger.LogInformation("Iniciando geração de {Count} pedidos de teste.", request.Count);
+
+            try
+            {
+                // Reutiliza a conexão e o canal para todas as publicações na carga
+                // Isso é mais eficiente do que criar e fechar para cada mensagem.
+                using var connection = _connectionFactory.CreateConnection();
+                using var channel = connection.CreateModel();
+
+                const string queueName = "orders";
+                channel.QueueDeclare(queue: queueName, durable: true, exclusive: false, autoDelete: false,
+                                     arguments: new Dictionary<string, object>
+                                     {
+                                         { "x-dead-letter-exchange", "orders.dlx" }
+                                     });
+
+                var properties = channel.CreateBasicProperties();
+                properties.Persistent = true;
+
+                for (int i = 0; i < request.Count; i++)
+                {
+                    var orderRequest = GenerateRandomOrderRequest(request.ProductsPerOrder);
+                    var json = JsonSerializer.Serialize(orderRequest);
+                    var body = Encoding.UTF8.GetBytes(json);
+
+                    channel.BasicPublish(exchange: "",
+                                         routingKey: queueName,
+                                         basicProperties: properties,
+                                         body: body);
+
+                    if (i % 1000 == 0) // Loga a cada 1000 pedidos para acompanhar o progresso
+                    {
+                        _logger.LogInformation("Gerados {Index} de {Count} pedidos de teste...", i + 1, request.Count);
+                    }
+
+                    if (request.DelayMs > 0)
+                    {
+                        await Task.Delay(request.DelayMs); // Atraso opcional entre publicações
+                    }
+                }
+                _logger.LogInformation("Geração de {Count} pedidos de teste finalizada.", request.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro durante a geração de pedidos de teste.");
+            }
+        });
+
+        // Retorna imediatamente para o cliente
+        return Accepted(new { message = $"Geração de {request.Count} pedidos de teste iniciada em segundo plano." });
+    }
+
+    // Método auxiliar para gerar um OrderRequest aleatório
+    private OrderRequest GenerateRandomOrderRequest(int productsPerOrder)
+    {
+        var products = new List<ProductRequest>();
+        var numberOfProducts = _random.Next(1, Math.Max(2, productsPerOrder * 2 - 1)); // Varia de 1 até quase o dobro do pedido
+
+        for (int i = 0; i < numberOfProducts; i++)
+        {
+            products.Add(new ProductRequest
+            {
+                Name = $"Product_{Guid.NewGuid().ToString().Substring(0, 8)}",
+                Quantity = _random.Next(1, 5),
+                UnitPrice = (decimal)(_random.NextDouble() * 100) + 0.99m // Preço entre 0.99 e 100.98
+            });
+        }
+
+        return new OrderRequest
+        {
+            ExternalId = $"TEST_ORDER_{Guid.NewGuid()}",
+            Products = products
+        };
     }
 
 }
