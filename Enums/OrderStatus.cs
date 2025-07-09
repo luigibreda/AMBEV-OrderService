@@ -4,7 +4,7 @@ namespace AMBEV_OrderService.Enums
     {
         RECEIVED,
         PROCESSING,
-        COMPLETED,
+        CALCULATED,
         DUPLICATED,
         ERROR
     }
