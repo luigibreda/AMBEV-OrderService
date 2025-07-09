@@ -17,6 +17,10 @@ public class AppDbContext : DbContext
             .IsUnique();
 
         modelBuilder.Entity<Order>()
+            .Property(o => o.Status)
+            .HasConversion<string>(); 
+
+        modelBuilder.Entity<Order>()
             .HasMany(o => o.Products)
             .WithOne(p => p.Order)
             .HasForeignKey(p => p.OrderId)
