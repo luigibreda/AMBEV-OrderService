@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AMBEV-OrderService")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+547d55c22a12dfa8ce2f44dd1fd0b711afbca4c7")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f5981240df1d111e0efafde45450728530794112")]
 [assembly: System.Reflection.AssemblyProductAttribute("AMBEV-OrderService")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AMBEV-OrderService")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

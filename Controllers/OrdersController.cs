@@ -1,3 +1,4 @@
+using AMBEV_OrderService.Enums;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OrderService.Data;
@@ -27,7 +28,7 @@ public class OrdersController : ControllerBase
         var order = new Order
         {
             ExternalId = request.ExternalId,
-            Status = "RECEIVED",
+            Status = OrderStatus.RECEIVED,  
             CreatedAt = DateTime.UtcNow,
             Products = request.Products.Select(p => new Product
             {
@@ -60,7 +61,7 @@ public class OrdersController : ControllerBase
         {
             ExternalId = order.ExternalId,
             TotalValue = order.TotalValue,
-            Status = order.Status,
+            Status = order.Status.ToString(),
             CreatedAt = order.CreatedAt,
             Products = order.Products.Select(p => new ProductResponse
             {
@@ -82,7 +83,16 @@ public class OrdersController : ControllerBase
             .AsQueryable();
 
         if (!string.IsNullOrEmpty(query.Status))
-            queryable = queryable.Where(o => o.Status == query.Status);
+        {
+            if (Enum.TryParse<OrderStatus>(query.Status, true, out var status))
+            {
+                queryable = queryable.Where(o => o.Status == status);
+            }
+            else
+            {
+                return BadRequest("Status inválido.");
+            }
+        }
 
         if (query.StartDate.HasValue)
         {
@@ -112,7 +122,7 @@ public class OrdersController : ControllerBase
         {
             ExternalId = order.ExternalId,
             TotalValue = order.TotalValue,
-            Status = order.Status,
+            Status = order.Status.ToString(),
             CreatedAt = order.CreatedAt,
             Products = order.Products.Select(p => new ProductResponse
             {
