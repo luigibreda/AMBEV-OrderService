@@ -15,22 +15,30 @@ namespace OrderService.Controllers;
 [Route("[controller]")]
 public class OrdersController : ControllerBase
 {
+    private readonly CQRS.Commands.CreateOrderCommandHandler _createOrderHandler;
+    private readonly CQRS.Queries.GetOrderByIdQueryHandler _getOrderByIdHandler;
     private readonly AppDbContext _context;
-    private readonly ConnectionFactory _connectionFactory;
-    private readonly ILogger<OrdersController> _logger;
     private readonly Random _random = new Random();
+    private readonly ILogger<OrdersController> _logger;
+    private readonly RabbitMQ.Client.ConnectionFactory _connectionFactory;
 
-    public OrdersController(AppDbContext context, ConnectionFactory connectionFactory, ILogger<OrdersController> logger)
+    public OrdersController(
+        CQRS.Commands.CreateOrderCommandHandler createOrderHandler,
+        CQRS.Queries.GetOrderByIdQueryHandler getOrderByIdHandler,
+        AppDbContext context,
+        ILogger<OrdersController> logger,
+        RabbitMQ.Client.ConnectionFactory connectionFactory)
     {
+        _createOrderHandler = createOrderHandler;
+        _getOrderByIdHandler = getOrderByIdHandler;
         _context = context;
-        _connectionFactory = connectionFactory;
         _logger = logger;
+        _connectionFactory = connectionFactory;
     }
 
     [HttpPost]
     public IActionResult CreateOrder([FromBody] OrderRequest request)
     {
-        // Validação básica do payload
         if (request == null || string.IsNullOrWhiteSpace(request.ExternalId))
         {
             return BadRequest("Payload do pedido é inválido.");
@@ -38,36 +46,16 @@ public class OrdersController : ControllerBase
 
         try
         {
-            using var connection = _connectionFactory.CreateConnection();
-            using var channel = connection.CreateModel();
-
-            const string queueName = "orders";
-            channel.QueueDeclare(queue: queueName,
-                                 durable: true,
-                                 exclusive: false,
-                                 autoDelete: false,
-                                 arguments: new Dictionary<string, object>
-                                 {
-                                     { "x-dead-letter-exchange", "orders.dlx" }
-                                 });
-
-            var json = JsonSerializer.Serialize(request);
-            var body = Encoding.UTF8.GetBytes(json);
-
-            var properties = channel.CreateBasicProperties();
-            properties.Persistent = true;
-
-            channel.BasicPublish(exchange: "",
-                                 routingKey: queueName,
-                                 basicProperties: properties,
-                                 body: body);
-
-            _logger.LogInformation("Pedido com ExternalId {ExternalId} recebido e publicado na fila.", request.ExternalId);
-            return Accepted(value: new { message = $"Pedido {request.ExternalId} recebido e enfileirado para processamento." });
+            var command = new CQRS.Commands.CreateOrderCommand
+            {
+                ExternalId = request.ExternalId,
+                Products = request.Products
+            };
+            _createOrderHandler.Handle(command);
+            return Accepted(new { message = $"Pedido {request.ExternalId} recebido e enfileirado para processamento." });
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            _logger.LogError(ex, "Falha ao publicar pedido {ExternalId} na fila.", request.ExternalId);
             return StatusCode(500, "Ocorreu um erro interno ao tentar processar o pedido.");
         }
     }
@@ -75,29 +63,10 @@ public class OrdersController : ControllerBase
     [HttpGet("{externalId}")]
     public async Task<IActionResult> GetOrder(string externalId)
     {
-        var order = await _context.Orders
-            .Include(o => o.Products)
-            .FirstOrDefaultAsync(o => o.ExternalId == externalId);
-
-        if (order == null)
-            return NotFound();
-
-        var response = new OrderResponse
-        {
-            ExternalId = order.ExternalId,
-            TotalValue = order.TotalValue,
-            Status = order.Status.ToString(),
-            CreatedAt = order.CreatedAt,
-            Products = order.Products.Select(p => new ProductResponse
-            {
-                Name = p.Name,
-                Quantity = p.Quantity,
-                UnitPrice = p.UnitPrice,
-                Total = p.Total
-            }).ToList()
-        };
-
-        return Ok(response);
+        var query = new CQRS.Queries.GetOrderByIdQuery { ExternalId = externalId };
+        var result = await _getOrderByIdHandler.Handle(query);
+        if (result == null) return NotFound();
+        return Ok(result);
     }
 
     [HttpGet]

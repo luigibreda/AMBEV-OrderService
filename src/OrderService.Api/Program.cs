@@ -24,6 +24,9 @@ builder.Services.AddSwaggerGen();          // Swagger
 // RabbitMQ
 builder.Services.AddHostedService<RabbitMqOrderConsumer>();
 
+builder.Services.AddScoped<OrderService.CQRS.Commands.CreateOrderCommandHandler>();
+builder.Services.AddScoped<OrderService.CQRS.Queries.GetOrderByIdQueryHandler>();
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
