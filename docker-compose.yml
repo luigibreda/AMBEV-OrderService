@@ -35,26 +35,30 @@ services:
   # Serviço para sua aplicação .NET (OrderService)
   orderservice:
     build:
-      context: ./src/OrderService.Api # Onde encontrar o Dockerfile (pasta atual)
-      dockerfile: Dockerfile # Nome do Dockerfile
+      context: .
+      dockerfile: Dockerfile
     restart: always
     ports:
-      - "8080:80" # Mapeia a porta 8080 do host para a porta 80 do contêiner (onde sua app escuta)
-      - "8081:443" # Mapeia a porta 8081 do host para a porta 443 do contêiner (para HTTPS, se usar)
-    depends_on: # Define a ordem de inicialização e dependências
+      - "8080:80"
+      - "8081:443"
+    depends_on:
       db:
-        condition: service_healthy # orderservice só inicia quando db estiver saudável
+        condition: service_healthy
       rabbitmq:
-        condition: service_healthy # orderservice só inicia quando rabbitmq estiver saudável
-    environment: # Variáveis de ambiente para sua aplicação
-      # String de conexão com o DB. Use o nome do serviço 'db' como hostname!
-      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=ambev_orders;Username=admin;Password=admin
-      # Configuração para desabilitar HTTPS no Docker Compose em desenvolvimento
-      # Ou configure o HTTPS corretamente no Dockerfile e nas portas se for necessário
-      ASPNETCORE_URLS: http://+:80 # Força a aplicação a escutar em HTTP na porta 80
-      ASPNETCORE_ENVIRONMENT: Development # Define o ambiente para carregar appsettings.Development.json
+        condition: service_healthy
+    environment:
+      # Configurações do banco de dados
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=ambev_orders;Username=admin;Password=admin;Pooling=true;Command Timeout=60
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:80
+      # Configurações do RabbitMQ
+      RabbitMQ__HostName: rabbitmq
+      RabbitMQ__Port: 5672
+      RabbitMQ__Username: guest
+      RabbitMQ__Password: guest
+      RabbitMQ__QueueName: orders
     healthcheck: # Healthcheck para verificar se sua aplicação está pronta
-      test: ["CMD-SHELL", "curl -f http://localhost/health || exit 1"] # Supondo que você tem um endpoint /health
+      test: ["CMD-SHELL", "curl -f http://localhost/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5

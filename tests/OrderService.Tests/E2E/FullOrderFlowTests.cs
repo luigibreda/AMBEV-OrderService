@@ -7,10 +7,10 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using OrderService.Data;      
-using OrderService.DTOs;     
-using OrderService.Enums;      
-using OrderService.Models;     
+using OrderService.Infrastructure;
+using OrderService.Application.DTOs;
+using OrderService.Domain.Enums;
+using OrderService.Domain.Models;
 using Testcontainers.PostgreSql;
 using Testcontainers.RabbitMq;
 using Xunit;
@@ -24,7 +24,7 @@ public class FullOrderFlowTests : IAsyncLifetime
     private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder().WithImage("postgres:16-alpine").Build();
     private readonly RabbitMqContainer _rabbitMqContainer = new RabbitMqBuilder().WithImage("rabbitmq:3-management-alpine").Build();
 
-    private WebApplicationFactory<Program> _factory;
+    private WebApplicationFactory<OrderService.WebApi.Program> _factory;
     private HttpClient _httpClient;
 
     public async Task InitializeAsync()
@@ -32,7 +32,7 @@ public class FullOrderFlowTests : IAsyncLifetime
         await _dbContainer.StartAsync();
         await _rabbitMqContainer.StartAsync();
 
-        _factory = new WebApplicationFactory<Program>()
+        _factory = new WebApplicationFactory<OrderService.WebApi.Program>()
             .WithWebHostBuilder(builder =>
             {
                 builder.ConfigureServices(services =>

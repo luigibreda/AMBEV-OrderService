@@ -1,4 +1,5 @@
-using OrderService.Models;
+using OrderService.Domain.Models;
+using System.Collections.Generic;
 using Xunit;
 using FluentAssertions;
 
