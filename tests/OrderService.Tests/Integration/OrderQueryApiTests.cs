@@ -53,10 +53,10 @@ public class OrderQueryApiTests : IAsyncLifetime
                     });
                 });
                 
-                    // Configure test services
+                    // Configuração dos serviços de teste
                     builder.ConfigureServices(services =>
                     {
-                        // Remove the default DbContext and inject the test one
+                        // Remove o DbContext padrão e injeta o de teste
                         var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(DbContextOptions<AppDbContext>));
                         if (descriptor != null)
                             services.Remove(descriptor);
@@ -69,14 +69,14 @@ public class OrderQueryApiTests : IAsyncLifetime
                             );
                         });
 
-                        // Register MediatR and handlers
+                        // Registra o MediatR e seus handlers
                         services.AddMediatR(cfg => 
                             cfg.RegisterServicesFromAssembly(typeof(GetOrderByIdQuery).Assembly));
                         
                         services.AddScoped<IRequestHandler<GetOrderByIdQuery, OrderResponse?>, GetOrderByIdQueryHandler>();
                         services.AddLogging();
                         
-                        // Mock IMessageBusService
+                        // Mock do serviço de mensageria
                         var mockMessageBusService = new Mock<IMessageBusService>();
                         mockMessageBusService
                             .Setup(m => m.PublishAsync(It.IsAny<object>(), It.IsAny<string>()))
@@ -84,7 +84,7 @@ public class OrderQueryApiTests : IAsyncLifetime
                             
                         services.AddSingleton(mockMessageBusService.Object);
 
-                        // Register RabbitMqSettings
+                        // Configurações do RabbitMQ
                         var rabbitMqSettings = new RabbitMqSettings
                         {
                             HostName = "localhost",
@@ -96,27 +96,27 @@ public class OrderQueryApiTests : IAsyncLifetime
                         
                         services.AddSingleton(Options.Create(rabbitMqSettings));
 
-                        // Register command handlers
+                        // Registra os handlers de comandos
                         services.AddScoped<OrderService.Application.Commands.CreateOrderCommandHandler>();
 
-                        // Remove RabbitMQ consumer to avoid interference with tests
+                        // Remove o consumidor do RabbitMQ para evitar interferência nos testes
                         var consumerDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IHostedService) && d.ImplementationType?.Name == "RabbitMqOrderConsumer");
                         if (consumerDescriptor != null)
                             services.Remove(consumerDescriptor);
                 });
             });
 
-        // Apply migrations and ensure database is clean
+        // Aplica as migrações e garante que o banco de dados está limpo
         using (var scope = _factory.Services.CreateScope())
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             
             try
             {
-                // Ensure the database is created and migrated
+                // Garante que o banco de dados foi criado e migrado
                 await dbContext.Database.EnsureCreatedAsync();
                 
-                // Check if the Orders table exists
+                // Verifica se a tabela de pedidos existe
                 var connection = dbContext.Database.GetDbConnection();
                 await connection.OpenAsync();
                 using var command = connection.CreateCommand();

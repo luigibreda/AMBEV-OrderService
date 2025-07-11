@@ -20,22 +20,21 @@ using OrderService.Infrastructure.Settings;
 using OrderService.WebApi.Controllers;
 using RabbitMQ.Client;
 
-// Declarações de nível superior (top-level statements) devem vir primeiro
+// Configuração inicial da aplicação
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+// Configuração dos serviços da aplicação
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Add MediatR with all handlers from the Application assembly
+// Registra o MediatR com todos os handlers da camada de Application
 builder.Services.AddMediatR(cfg => 
     cfg.RegisterServicesFromAssembly(typeof(CreateOrderCommand).Assembly));
 
-// Add AutoMapper
+// Configuração do AutoMapper
 builder.Services.AddAutoMapper(typeof(Program).Assembly);
 
-// Configure PostgreSQL
+// Configuração do PostgreSQL
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? 
     throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
@@ -43,20 +42,20 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString, 
         b => b.MigrationsAssembly("OrderService.Infrastructure")));
 
-// Register repositories
+// Registro dos repositórios
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 
-// Register application services
+// Registro dos serviços da aplicação
 builder.Services.AddScoped<OrderProcessorService>();
 
-// Configure RabbitMQ
+// Configuração do RabbitMQ
 var rabbitMqSection = builder.Configuration.GetSection(RabbitMqSettings.SectionName);
 builder.Services.Configure<RabbitMqSettings>(rabbitMqSection);
 
-// Register RabbitMQ services
+// Registro dos serviços do RabbitMQ
 builder.Services.AddSingleton<IMessageBusService, RabbitMqService>();
 
-// Register RabbitMQ ConnectionFactory
+// Configuração da fábrica de conexão do RabbitMQ
 builder.Services.AddSingleton<IConnectionFactory>(sp => 
 {
     var settings = rabbitMqSection.Get<RabbitMqSettings>() ?? 
@@ -74,14 +73,14 @@ builder.Services.AddSingleton<IConnectionFactory>(sp =>
     };
 });
 
-// Register API services
+// Configuração dos serviços da API
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        options.JsonSerializerOptions.PropertyNamingPolicy = null; // Keep PascalCase
+options.JsonSerializerOptions.PropertyNamingPolicy = null; // Mantém o padrão PascalCase
     });
 
-// Configure Swagger
+// Configuração do Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -92,7 +91,7 @@ builder.Services.AddSwaggerGen(c =>
         Description = "API para gerenciamento de pedidos"
     });
     
-    // Configuração de segurança JWT (opcional, pode ser removida se não for usar autenticação)
+    // Configuração de segurança JWT
     c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
     {
         Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
@@ -120,7 +119,7 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
     
-    // Enable XML comments for Swagger
+    // Habilita comentários XML para o Swagger
     var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
     if (File.Exists(xmlPath))
@@ -129,7 +128,7 @@ builder.Services.AddSwaggerGen(c =>
     }
 });
 
-// Add CORS policy
+// Configuração da política CORS
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
@@ -140,19 +139,19 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Register RabbitMQ consumer as a hosted service
+// Registra o consumidor do RabbitMQ como um serviço em background
 builder.Services.AddHostedService<RabbitMqOrderConsumer>();
 
-// Register logging
+// Configuração do sistema de logs
 builder.Services.AddLogging(configure => 
     configure.AddConsole().AddDebug().SetMinimumLevel(LogLevel.Information));
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline
+// Configuração do pipeline de requisições HTTP
 var isDevelopment = app.Environment.IsDevelopment();
 
-// Always enable Swagger in development, or when SWAGGER_ENABLED is true
+// Habilita o Swagger em ambiente de desenvolvimento ou quando a variável SWAGGER_ENABLED estiver definida
 var swaggerEnabled = isDevelopment || 
     string.Equals(Environment.GetEnvironmentVariable("SWAGGER_ENABLED"), "true", StringComparison.OrdinalIgnoreCase);
 
@@ -166,7 +165,7 @@ if (swaggerEnabled)
     });
 }
 
-// Configure Kestrel to listen on all network interfaces
+// Configura o Kestrel para escutar em todas as interfaces de rede
 var port = Environment.GetEnvironmentVariable("ASPNETCORE_HTTP_PORTS") ?? "80";
 var url = $"http://0.0.0.0:{port}";
 
@@ -174,7 +173,7 @@ app.UseHttpsRedirection();
 app.UseRouting();
 app.UseCors();
 
-// Configure the app to listen on the specified URL
+// Configura a aplicação para escutar na URL especificada
 app.Urls.Add(url);
 
 app.UseAuthorization();
@@ -183,11 +182,12 @@ app.MapControllers();
 
 var rabbitMqSettings = app.Configuration.GetSection(RabbitMqSettings.SectionName).Get<RabbitMqSettings>();
 
-// Aplicar migrações apenas se o argumento --migrate for fornecido
+// Tratamento de migrações quando a flag --migrate for passada
 if (args.Contains("--migrate"))
 {
     try
     {
+        Console.WriteLine("Aplicando migrações do banco de dados...");
         using var scope = app.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<OrderService.Infrastructure.Data.AppDbContext>();
         
@@ -205,7 +205,7 @@ if (args.Contains("--migrate"))
     }
 }
 
-// Se não for uma execução de migração, continua com a inicialização normal do aplicativo
+// Se não for uma execução de migração, continua com a inicialização normal
 if (!app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
@@ -241,14 +241,14 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// Start RabbitMQ consumer in development mode
+// Inicia o consumidor do RabbitMQ em modo de desenvolvimento
 if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
     var messageBusService = scope.ServiceProvider.GetRequiredService<IMessageBusService>();
     var orderProcessor = scope.ServiceProvider.GetRequiredService<OrderProcessorService>();
     
-    // Start listening for messages
+    // Inicia a escuta de mensagens
     _ = messageBusService.SubscribeAsync<CreateOrderCommand>("orders", orderProcessor.ProcessOrderAsync)
         .ContinueWith(t => 
         {
@@ -264,7 +264,7 @@ app.UseAuthorization();
 app.MapControllers();
 app.Run();
 
-// Adiciona a declaração da classe Program para torná-la acessível aos testes
+// Torna a classe Program acessível para os testes
 namespace OrderService.WebApi
 {
     public partial class Program { }

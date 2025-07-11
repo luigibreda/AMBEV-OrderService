@@ -78,19 +78,6 @@ public class OrdersController : ControllerBase
             .Include(o => o.Products)
             .AsQueryable();
 
-        // Filtro de status pode ser ajustado conforme enum e domínio
-        // if (!string.IsNullOrEmpty(query.Status))
-        // {
-        //     if (Enum.TryParse<OrderStatus>(query.Status, true, out var status))
-        //     {
-        //         queryable = queryable.Where(o => o.Status == status);
-        //     }
-        //     else
-        //     {
-        //         return BadRequest("Status inválido.");
-        //     }
-        // }
-
         if (query.StartDate.HasValue)
         {
             var startUtc = DateTime.SpecifyKind(query.StartDate.Value, DateTimeKind.Utc);
@@ -100,7 +87,7 @@ public class OrdersController : ControllerBase
         if (query.EndDate.HasValue)
         {
             var endUtc = DateTime.SpecifyKind(
-                query.EndDate.Value.Date.AddDays(1).AddTicks(-1), // 23:59:59.9999999
+query.EndDate.Value.Date.AddDays(1).AddTicks(-1), // Ajusta para o último instante do dia
                 DateTimeKind.Utc
             );
 
@@ -142,7 +129,7 @@ public class OrdersController : ControllerBase
     [HttpPost("generate-test-orders")] 
     public IActionResult GenerateTestOrders([FromBody] GenerateOrdersRequest request)
     {
-        if (request.Count <= 0 || request.Count > 1000000) // Limite razoável para evitar abuso
+        if (request.Count <= 0 || request.Count > 1000000) // Limita a quantidade de pedidos gerados
         {
             return BadRequest("O número de pedidos deve estar entre 1 e 1.000.000.");
         }
