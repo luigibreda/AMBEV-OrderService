@@ -1,4 +1,5 @@
 
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using OrderService.Application.DTOs;
 using OrderService.Application.Queries;
@@ -6,22 +7,26 @@ using OrderService.Infrastructure.Data;
 
 namespace OrderService.Infrastructure.Queries
 {
-    public class GetOrderByIdQueryHandler : IGetOrderByIdQueryHandler
+    public class GetOrderByIdQueryHandler : IRequestHandler<GetOrderByIdQuery, OrderResponse?>
     {
-        private readonly OrderService.Infrastructure.Data.AppDbContext _context;
+        private readonly AppDbContext _context;
 
-        public GetOrderByIdQueryHandler(OrderService.Infrastructure.Data.AppDbContext context)
+        public GetOrderByIdQueryHandler(AppDbContext context)
         {
-            _context = context;
+            _context = context ?? throw new ArgumentNullException(nameof(context));
         }
 
-        public async Task<OrderResponse?> Handle(GetOrderByIdQuery query)
+        public async Task<OrderResponse?> Handle(GetOrderByIdQuery query, CancellationToken cancellationToken)
         {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+            
             var order = await _context.Orders
                 .Include(o => o.Products)
-                .FirstOrDefaultAsync(o => o.ExternalId == query.ExternalId);
+                .AsNoTracking()
+                .FirstOrDefaultAsync(o => o.ExternalId == query.ExternalId, cancellationToken);
 
-            if (order == null) return null;
+            if (order == null) 
+                return null;
 
             return new OrderResponse
             {

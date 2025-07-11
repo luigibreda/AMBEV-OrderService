@@ -28,14 +28,20 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Add MediatR
+// Add MediatR with all handlers from the Application assembly
 builder.Services.AddMediatR(cfg => 
-    cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
+    cfg.RegisterServicesFromAssembly(typeof(CreateOrderCommand).Assembly));
 
-// Conexão com PostgreSQL
-builder.Services.AddDbContext<OrderService.Infrastructure.Data.AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"),
-    b => b.MigrationsAssembly("OrderService.Infrastructure")));
+// Add AutoMapper
+builder.Services.AddAutoMapper(typeof(Program).Assembly);
+
+// Configure PostgreSQL
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? 
+    throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(connectionString, 
+        b => b.MigrationsAssembly("OrderService.Infrastructure")));
 
 // Register repositories
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
@@ -44,58 +50,138 @@ builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<OrderProcessorService>();
 
 // Configure RabbitMQ
-builder.Services.Configure<RabbitMqSettings>(builder.Configuration.GetSection(RabbitMqSettings.SectionName));
+var rabbitMqSection = builder.Configuration.GetSection(RabbitMqSettings.SectionName);
+builder.Services.Configure<RabbitMqSettings>(rabbitMqSection);
+
+// Register RabbitMQ services
 builder.Services.AddSingleton<IMessageBusService, RabbitMqService>();
 
-// Configuração do RabbitMQ
-var rabbitMqConfig = builder.Configuration.GetSection("RabbitMQ");
-
-// Registra a ConnectionFactory do RabbitMQ como IConnectionFactory
-builder.Services.AddSingleton<IConnectionFactory>(sp => new ConnectionFactory
+// Register RabbitMQ ConnectionFactory
+builder.Services.AddSingleton<IConnectionFactory>(sp => 
 {
-    HostName = rabbitMqConfig["HostName"],
-    Port = rabbitMqConfig.GetValue<int>("Port"),
-    UserName = rabbitMqConfig["Username"],
-    Password = rabbitMqConfig["Password"],
-    DispatchConsumersAsync = true,
-    AutomaticRecoveryEnabled = true,
-    NetworkRecoveryInterval = TimeSpan.FromSeconds(10)
+    var settings = rabbitMqSection.Get<RabbitMqSettings>() ?? 
+        throw new InvalidOperationException("RabbitMQ settings not configured");
+    
+    return new ConnectionFactory
+    {
+        HostName = settings.HostName,
+        Port = settings.Port,
+        UserName = settings.Username,
+        Password = settings.Password,
+        DispatchConsumersAsync = true,
+        AutomaticRecoveryEnabled = true,
+        NetworkRecoveryInterval = TimeSpan.FromSeconds(10)
+    };
 });
 
-// Registra uma instância de ConnectionFactory para ser usada diretamente (se necessário)
-builder.Services.AddSingleton<ConnectionFactory>(sp => 
-    sp.GetRequiredService<IConnectionFactory>() as ConnectionFactory ?? 
-    throw new InvalidOperationException("Falha ao obter ConnectionFactory"));
+// Register API services
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = null; // Keep PascalCase
+    });
 
-// Serviços da API
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer(); // Swagger
-builder.Services.AddSwaggerGen();          // Swagger
+// Configure Swagger
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo 
+    { 
+        Title = "Order Service API", 
+        Version = "v1",
+        Description = "API para gerenciamento de pedidos"
+    });
+    
+    // Configuração de segurança JWT (opcional, pode ser removida se não for usar autenticação)
+    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\"",
+        Name = "Authorization",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+    
+    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement()
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                },
+                Scheme = "oauth2",
+                Name = "Bearer",
+                In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+            },
+            new List<string>()
+        }
+    });
+    
+    // Enable XML comments for Swagger
+    var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    if (File.Exists(xmlPath))
+    {
+        c.IncludeXmlComments(xmlPath);
+    }
+});
 
-// CQRS Handlers
-builder.Services.AddScoped<IGetOrderByIdQueryHandler, GetOrderByIdQueryHandler>();
-
-// Register command and query handlers
-builder.Services.AddScoped<IRequestHandler<CreateOrderCommand, Unit>, CreateOrderCommandHandler>();
-
-// Register the concrete handler for direct injection in OrdersController
-builder.Services.AddScoped<GetOrderByIdQueryHandler>();
-
-// Register ILogger
-builder.Services.AddLogging();
+// Add CORS policy
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
 
 // Register RabbitMQ consumer as a hosted service
 builder.Services.AddHostedService<RabbitMqOrderConsumer>();
 
-// Register the OrdersController
-builder.Services.AddScoped<OrdersController>();
-
-// Add Controllers
-builder.Services.AddControllers();
+// Register logging
+builder.Services.AddLogging(configure => 
+    configure.AddConsole().AddDebug().SetMinimumLevel(LogLevel.Information));
 
 var app = builder.Build();
 
-var rabbitMqSettings = builder.Configuration.GetSection(RabbitMqSettings.SectionName).Get<RabbitMqSettings>();
+// Configure the HTTP request pipeline
+var isDevelopment = app.Environment.IsDevelopment();
+
+// Always enable Swagger in development, or when SWAGGER_ENABLED is true
+var swaggerEnabled = isDevelopment || 
+    string.Equals(Environment.GetEnvironmentVariable("SWAGGER_ENABLED"), "true", StringComparison.OrdinalIgnoreCase);
+
+if (swaggerEnabled)
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c => 
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Order Service API V1");
+        c.RoutePrefix = "swagger";
+    });
+}
+
+// Configure Kestrel to listen on all network interfaces
+var port = Environment.GetEnvironmentVariable("ASPNETCORE_HTTP_PORTS") ?? "80";
+var url = $"http://0.0.0.0:{port}";
+
+app.UseHttpsRedirection();
+app.UseRouting();
+app.UseCors();
+
+// Configure the app to listen on the specified URL
+app.Urls.Add(url);
+
+app.UseAuthorization();
+
+app.MapControllers();
+
+var rabbitMqSettings = app.Configuration.GetSection(RabbitMqSettings.SectionName).Get<RabbitMqSettings>();
 
 // Aplicar migrações apenas se o argumento --migrate for fornecido
 if (args.Contains("--migrate"))

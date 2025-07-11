@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OrderService.Application.DTOs;
@@ -14,32 +15,29 @@ namespace OrderService.WebApi.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-
+[ApiExplorerSettings(GroupName = "v1")]
 public class OrdersController : ControllerBase
 {
-    private readonly CreateOrderCommandHandler _createOrderHandler;
-    private readonly GetOrderByIdQueryHandler _getOrderByIdHandler;
+    private readonly IMediator _mediator;
     private readonly AppDbContext _context;
     private readonly ILogger<OrdersController> _logger;
     private readonly IConnectionFactory _connectionFactory;
-    private readonly Random _random = new Random();
+    private readonly Random _random = new();
 
     public OrdersController(
-        CreateOrderCommandHandler createOrderHandler,
-        GetOrderByIdQueryHandler getOrderByIdHandler,
+        IMediator mediator,
         AppDbContext context,
         ILogger<OrdersController> logger,
         IConnectionFactory connectionFactory)
     {
-        _createOrderHandler = createOrderHandler;
-        _getOrderByIdHandler = getOrderByIdHandler;
-        _context = context;
-        _logger = logger;
-        _connectionFactory = connectionFactory;
+        _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
+        _context = context ?? throw new ArgumentNullException(nameof(context));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
     }
 
     [HttpPost]
-    public IActionResult CreateOrder([FromBody] OrderRequest request)
+    public async Task<IActionResult> CreateOrder([FromBody] OrderRequest request, CancellationToken cancellationToken)
     {
         if (request == null || string.IsNullOrWhiteSpace(request.ExternalId))
         {
@@ -53,20 +51,22 @@ public class OrdersController : ControllerBase
                 ExternalId = request.ExternalId,
                 Products = request.Products
             };
-            _createOrderHandler.Handle(command, HttpContext.RequestAborted);
+            
+            await _mediator.Send(command, cancellationToken);
             return Accepted(new { message = $"Pedido {request.ExternalId} recebido e enfileirado para processamento." });
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Erro ao processar o pedido {ExternalId}", request?.ExternalId);
             return StatusCode(500, "Ocorreu um erro interno ao tentar processar o pedido.");
         }
     }
 
     [HttpGet("{externalId}")]
-    public async Task<IActionResult> GetOrder(string externalId)
+    public async Task<IActionResult> GetOrder(string externalId, CancellationToken cancellationToken)
     {
         var query = new GetOrderByIdQuery { ExternalId = externalId };
-        var result = await _getOrderByIdHandler.Handle(query);
+        var result = await _mediator.Send(query, cancellationToken);
         if (result == null) return NotFound();
         return Ok(result);
     }

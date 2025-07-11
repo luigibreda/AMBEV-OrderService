@@ -1,43 +1,51 @@
-version: '3.8' # Versão da sintaxe do Docker Compose
+version: '3.8'
 
 services:
   # Serviço para o PostgreSQL
   db:
-    image: postgres:16-alpine # Imagem oficial do PostgreSQL (versão alpine é mais leve)
-    restart: always # Tenta reiniciar o serviço se ele falhar
-    environment: # Variáveis de ambiente para configurar o PostgreSQL
-      POSTGRES_DB: ambev_orders # Nome do seu banco de dados
-      POSTGRES_USER: admin     # Usuário do banco
-      POSTGRES_PASSWORD: admin # Senha do banco
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: ambev_orders
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
     volumes:
-      - pgdata:/var/lib/postgresql/data # Volume persistente para os dados do DB
+      - pgdata:/var/lib/postgresql/data
     ports:
-      - "5432:5432" # Mapeia a porta 5432 do host para a porta 5432 do contêiner
-    healthcheck: # Healthcheck para verificar se o DB está pronto
+      - "5432:5432"
+    healthcheck:
       test: ["CMD-SHELL", "pg_isready -U admin -d ambev_orders"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 30s
 
   # Serviço para o RabbitMQ
   rabbitmq:
-    image: rabbitmq:3-management-alpine # Imagem oficial do RabbitMQ com interface de gestão
+    image: rabbitmq:3-management-alpine
+    hostname: rabbitmq
+    container_name: rabbitmq
     restart: always
     ports:
-      - "5672:5672" # Porta padrão para comunicação AMQP
-      - "15672:15672" # Porta para a interface de gestão web
-    healthcheck: # Healthcheck para verificar se o RabbitMQ está pronto
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
 
-  # Serviço para sua aplicação .NET (OrderService)
+  # Serviço para a aplicação .NET
   orderservice:
     build:
       context: .
       dockerfile: Dockerfile
-    restart: always
+    container_name: orderservice
+    restart: unless-stopped
     ports:
       - "8080:80"
       - "8081:443"
@@ -48,23 +56,27 @@ services:
         condition: service_healthy
     environment:
       # Configurações do banco de dados
-      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=ambev_orders;Username=admin;Password=admin;Pooling=true;Command Timeout=60
-      ASPNETCORE_ENVIRONMENT: Development
-      ASPNETCORE_URLS: http://+:80
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Server=db;Port=5432;Database=ambev_orders;User Id=admin;Password=admin;Pooling=true;Command Timeout=60;
+      - ASPNETCORE_URLS=http://+:80
       # Configurações do RabbitMQ
-      RabbitMQ__HostName: rabbitmq
-      RabbitMQ__Port: 5672
-      RabbitMQ__Username: guest
-      RabbitMQ__Password: guest
-      RabbitMQ__QueueName: orders
-    healthcheck: # Healthcheck para verificar se sua aplicação está pronta
-      test: ["CMD-SHELL", "curl -f http://localhost/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    # volumes: # Opcional: Para mapear a pasta de logs para o host
-    #   - ./logs:/app/logs
+      - RabbitMQ__HostName=rabbitmq
+      - RabbitMQ__Port=5672
+      - RabbitMQ__Username=guest
+      - RabbitMQ__Password=guest
+      - RabbitMQ__QueueName=orders
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 # Volumes nomeados para persistência de dados
 volumes:
-  pgdata: # Os dados do PostgreSQL serão armazenados aqui
+  pgdata:

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using MediatR;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -13,11 +14,13 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using OrderService.Application.Commands;
+using OrderService.Application.DTOs;
 using OrderService.Application.Interfaces;
 using OrderService.Application.Queries;
 using OrderService.Domain.Enums;
 using OrderService.Domain.Models;
 using OrderService.Infrastructure.Data;
+using OrderService.Infrastructure.Queries;
 using OrderService.Infrastructure.Services;
 using OrderService.Infrastructure.Settings;
 using Testcontainers.PostgreSql;
@@ -66,8 +69,11 @@ public class OrderQueryApiTests : IAsyncLifetime
                             );
                         });
 
-                        // Register required handlers
-                        services.AddScoped<OrderService.Application.Queries.IGetOrderByIdQueryHandler, OrderService.Infrastructure.Queries.GetOrderByIdQueryHandler>();
+                        // Register MediatR and handlers
+                        services.AddMediatR(cfg => 
+                            cfg.RegisterServicesFromAssembly(typeof(GetOrderByIdQuery).Assembly));
+                        
+                        services.AddScoped<IRequestHandler<GetOrderByIdQuery, OrderResponse?>, GetOrderByIdQueryHandler>();
                         services.AddLogging();
                         
                         // Mock IMessageBusService

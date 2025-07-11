@@ -2,54 +2,67 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copia os arquivos de projeto necessários
-COPY ["OrderService.sln", "."]
+# Install dotnet-ef as a global tool
+RUN dotnet tool install --tool-path /usr/local/bin dotnet-ef --version 8.0.0
+
+# Copy solution and project files
+COPY ["OrderService.sln", "./"]
 COPY ["src/OrderService.Domain/OrderService.Domain.csproj", "src/OrderService.Domain/"]
 COPY ["src/OrderService.Application/OrderService.Application.csproj", "src/OrderService.Application/"]
 COPY ["src/OrderService.Infrastructure/OrderService.Infrastructure.csproj", "src/OrderService.Infrastructure/"]
 COPY ["src/OrderService.WebApi/OrderService.WebApi.csproj", "src/OrderService.WebApi/"]
 
-# Restaura apenas os projetos necessários (ignora os testes)
-RUN dotnet restore "src/OrderService.WebApi/OrderService.WebApi.csproj"
-
-# Copia o resto dos arquivos
+# Copy the rest of the source code
 COPY . .
 
-# Publica a aplicação
-WORKDIR "/src/src/OrderService.WebApi"
-RUN dotnet publish -c Release -o /app/publish /p:UseAppHost=false
+# Restore and build only the required projects
+RUN dotnet restore "src/OrderService.WebApi/OrderService.WebApi.csproj"
+RUN dotnet build "src/OrderService.WebApi/OrderService.WebApi.csproj" -c Release --no-restore
 
-# Runtime stage
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS final
+# Publish the WebApi project
+RUN dotnet publish "src/OrderService.WebApi/OrderService.WebApi.csproj" -c Release -o /app/publish --no-restore
+
+# Runtime stage - Using SDK to have access to dotnet-ef
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS runtime
 WORKDIR /app
 
-# Define variáveis de ambiente
-ENV ASPNETCORE_ENVIRONMENT=Development
-ENV ASPNETCORE_URLS=http://+:80
+# Install PostgreSQL client
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
 
-# Expõe as portas
-EXPOSE 80
+# Install dotnet-ef as a global tool
+RUN dotnet tool install --tool-path /usr/local/bin dotnet-ef --version 8.0.0
 
-# Copia os arquivos publicados
+# Add .NET tools to PATH
+ENV PATH="$PATH:/root/.dotnet/tools:/usr/local/bin"
+
+# Copy published files
 COPY --from=build /app/publish .
 
-# Copia os arquivos de projeto para o runtime (necessário para migrações)
+# Copy project files for migrations
 COPY --from=build /src/src/OrderService.Infrastructure/ ./OrderService.Infrastructure/
 COPY --from=build /src/src/OrderService.Domain/ ./OrderService.Domain/
-COPY --from=build /src/src/OrderService.WebApi/ ./
 
-# Cria um script para aplicar migrações e iniciar a aplicação
-RUN echo '#!/bin/bash\n\nset -e\n\n# Aplica migrações\necho "Aplicando migrações do banco de dados..."\ndotnet ef database update \
-  --project /app/OrderService.Infrastructure \
-  --startup-project /app \
-  --no-build \
-  --configuration Release \
-  --framework net8.0\necho "Migrações aplicadas com sucesso."\n\n# Inicia a aplicação\necho "Iniciando a aplicação..."\nexec dotnet OrderService.WebApi.dll' > /app/entrypoint.sh && \
-    chmod +x /app/entrypoint.sh
+# Copy entrypoint script and make it executable
+COPY entrypoint.sh .
+RUN chmod +x /app/entrypoint.sh
 
-# Instala as ferramentas do EF Core
-RUN dotnet tool install --global dotnet-ef --version 9.0.1
-ENV PATH="$PATH:/root/.dotnet/tools"
+# Set environment variables
+ENV ASPNETCORE_URLS=http://+:80
+ENV ASPNETCORE_HTTP_PORTS=80
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
+ENV TZ=America/Sao_Paulo
+ENV LC_ALL=pt_BR.UTF-8
+ENV LANG=pt_BR.UTF-8
+ENV LANGUAGE=pt_BR:pt:en
+ENV SWAGGER_ENABLED=true
 
-# Ponto de entrada
+# Make sure the entrypoint script has Unix line endings
+RUN sed -i 's/\r$//' /app/entrypoint.sh
+
+# Expose port 80
+EXPOSE 80
+
+# Set the entry point
 ENTRYPOINT ["/app/entrypoint.sh"]
