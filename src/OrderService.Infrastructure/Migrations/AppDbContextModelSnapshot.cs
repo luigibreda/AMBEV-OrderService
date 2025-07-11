@@ -4,13 +4,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using OrderService.Infrastructure;
+using OrderService.Infrastructure.Data;
 
 #nullable disable
 
 namespace AMBEV_OrderService.Migrations
 {
-    [DbContext(typeof(AppDbContext))]
+    [DbContext(typeof(OrderService.Infrastructure.Data.AppDbContext))]
     partial class AppDbContextModelSnapshot : ModelSnapshot
     {
         protected override void BuildModel(ModelBuilder modelBuilder)

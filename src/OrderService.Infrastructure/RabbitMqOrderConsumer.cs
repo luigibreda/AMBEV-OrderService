@@ -3,7 +3,7 @@ using RabbitMQ.Client.Events;
 using System.Text;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using OrderService.Infrastructure;
+using OrderService.Infrastructure.Data;
 using OrderService.Application.DTOs;
 using OrderService.Domain.Models;
 using OrderService.Domain.Enums;

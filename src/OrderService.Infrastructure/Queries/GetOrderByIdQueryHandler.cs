@@ -1,16 +1,16 @@
 
 using Microsoft.EntityFrameworkCore;
-using OrderService.Infrastructure;
 using OrderService.Application.DTOs;
 using OrderService.Application.Queries;
+using OrderService.Infrastructure.Data;
 
 namespace OrderService.Infrastructure.Queries
 {
     public class GetOrderByIdQueryHandler : IGetOrderByIdQueryHandler
     {
-        private readonly AppDbContext _context;
+        private readonly OrderService.Infrastructure.Data.AppDbContext _context;
 
-        public GetOrderByIdQueryHandler(AppDbContext context)
+        public GetOrderByIdQueryHandler(OrderService.Infrastructure.Data.AppDbContext context)
         {
             _context = context;
         }

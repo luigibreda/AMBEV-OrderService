@@ -1,15 +1,19 @@
-# .NET Core build artifacts
+# .NET Core
 bin/
 obj/
 
-# Visual Studio files
+# Visual Studio
 .vs/
 *.user
 *.userosscache
 *.sln.docstates
-
-# User-specific files (MonoDevelop/Xamarin Studio)
+*.suo
 *.userprefs
+*.dbmdl
+*.jfm
+*.pfx
+*.publishsettings
+orleans.codegen.cs
 
 # Build results
 [Dd]ebug/
@@ -27,32 +31,213 @@ msbuild.log
 msbuild.err
 msbuild.wrn
 
-# Visual Studio cache/options directory
-.vs/
-
-# MSTest test Results
+# Test results
 [Tt]est[Rr]esult*/
 [Bb]uild[Ll]og.*
+*.trx
+*.TMD
 
-# Local development settings
-appsettings.Development.json
+# Local development
+*.local
 
 # Docker
 .dockerignore
+.docker/
 
-# IDE specific files
-.idea/
+# IDE - Visual Studio
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# SQL Server files
+*.mdf
+*.ldf
+*.ndf
+
+# User-specific files
+*.rsuser
 *.suo
 *.user
 *.userosscache
 *.sln.docstates
 
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
+# MSTest test results
+TestResults/
+*.trx
+
+# NUnit test results
+*.VisualState.xml
+TestResult.xml
+
+# ReSharper
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# Coverage files
+*.coverage
+*.coveragexml
+coverage.*
+*.coverage.*
+*.coverage.*.*
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# VS Code files for those working on multiple tools
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Local History for Visual Studio Code
+.history/
+
+# Windows image file caches
 Thumbs.db
-.windsurf/rules/ambev.md
+ehthumbs.db
+
+# Folder config file
+Desktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Windows Installer files
+*.cab
+*.msi
+*.msm
+*.msp
+
+# Windows shortcuts
+*.lnk
+
+# JetBrains Rider
+.idea/
+*.sln.iml
+
+# User-specific files (MonoDevelop/Xamarin Studio)
+*.userprefs
+
+# Build results of an Xamarin Android application
+*.apk
+*.apk.ide
+
+# Build results of an Xamarin iOS application
+*.ipa
+*.hmap
+*.hprof
+
+# Build results of an Xamarin MacOS application
+*.app
+*.app.dSYM
+*.pdb
+*.dll.mdb
+*.exe.mdb
+
+# Build results of an Xamarin Android application
+*.apk
+*.apk.ide
+
+# Build results of an Xamarin iOS application
+*.ipa
+*.hmap
+*.hprof
+
+# Build results of an Xamarin MacOS application
+*.app
+*.app.dSYM
+*.pdb
+*.dll.mdb
+*.exe.mdb
+
+# Build results of an Xamarin Android application
+*.apk
+*.apk.ide
+
+# Build results of an Xamarin iOS application
+*.ipa
+*.hmap
+*.hprof
+
+# Build results of an Xamarin MacOS application
+*.app
+*.app.dSYM
+*.pdb
+*.dll.mdb
+*.exe.mdb
+
+# Build results of an Xamarin Android application
+*.apk
+*.apk.ide
+
+# Build results of an Xamarin iOS application
+*.ipa
+*.hmap
+*.hprof
+
+# Build results of an Xamarin MacOS application
+*.app
+*.app.dSYM
+*.pdb
+*.dll.mdb
+*.exe.mdb
+
+# Build results of an Xamarin Android application
+*.apk
+*.apk.ide
+
+# Build results of an Xamarin iOS application
+*.ipa
+*.hmap
+*.hprof
+
+# Build results of an Xamarin MacOS application
+*.app
+*.app.dSYM
+*.pdb
+*.dll.mdb
+*.exe.mdb
+
+# Build results of an Xamarin Android application
+*.apk
+*.apk.ide
+
+# Build results of an Xamarin iOS application
+*.ipa
+*.hmap
+*.hprof
+
+# Build results of an Xamarin MacOS application
+*.app
+*.app.dSYM
+*.pdb
+*.dll.mdb
+*.exe.mdb
+
+# Build results of an Xamarin Android application
+*.apk
+*.apk.ide
+
+# Build results of an Xamarin iOS application
+*.ipa
+*.hmap
+*.hprof
+
+# Build results of an Xamarin MacOS application
+*.app
+*.app.dSYM
+*.pdb
+*.dll.mdb
+*.exe.mdb

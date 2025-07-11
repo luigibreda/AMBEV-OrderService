@@ -6,7 +6,7 @@ using OrderService.Application.DTOs;
 using OrderService.Application.Commands;
 using OrderService.Application.Queries;
 using OrderService.Domain.Models;
-using OrderService.Infrastructure;
+using OrderService.Infrastructure.Data;
 using OrderService.Infrastructure.Queries;
 using RabbitMQ.Client;
 
@@ -53,7 +53,7 @@ public class OrdersController : ControllerBase
                 ExternalId = request.ExternalId,
                 Products = request.Products
             };
-            _createOrderHandler.Handle(command);
+            _createOrderHandler.Handle(command, HttpContext.RequestAborted);
             return Accepted(new { message = $"Pedido {request.ExternalId} recebido e enfileirado para processamento." });
         }
         catch (Exception)

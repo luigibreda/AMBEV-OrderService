@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using OrderService.Infrastructure;
+using OrderService.Infrastructure.Data;
 using OrderService.Application.DTOs;
 using OrderService.Domain.Enums;
 using OrderService.Domain.Models;

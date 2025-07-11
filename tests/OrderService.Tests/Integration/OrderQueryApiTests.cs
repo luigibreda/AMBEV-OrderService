@@ -10,12 +10,16 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Moq;
 using OrderService.Application.Commands;
+using OrderService.Application.Interfaces;
 using OrderService.Application.Queries;
 using OrderService.Domain.Enums;
 using OrderService.Domain.Models;
-using OrderService.Infrastructure;
-using RabbitMQ.Client;
+using OrderService.Infrastructure.Data;
+using OrderService.Infrastructure.Services;
+using OrderService.Infrastructure.Settings;
 using Testcontainers.PostgreSql;
 using Xunit;
 using FluentAssertions;
@@ -46,61 +50,81 @@ public class OrderQueryApiTests : IAsyncLifetime
                     });
                 });
                 
-                builder.ConfigureServices(services =>
-                {
-                    // Remove o contexto padrão e injeta o de teste
-                    var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(DbContextOptions<AppDbContext>));
-                    if (descriptor != null)
-                        services.Remove(descriptor);
-
-                    services.AddDbContext<AppDbContext>((sp, options) =>
+                    // Configure test services
+                    builder.ConfigureServices(services =>
                     {
-                        options.UseNpgsql(
-                            _dbContainer.GetConnectionString() + ";Pooling=false",
-                            npgsqlOptions => npgsqlOptions.MigrationsAssembly("OrderService.Infrastructure")
-                        );
-                    });
+                        // Remove the default DbContext and inject the test one
+                        var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(DbContextOptions<AppDbContext>));
+                        if (descriptor != null)
+                            services.Remove(descriptor);
 
-                    // Registrar os handlers necessários
-                    services.AddScoped<OrderService.Application.Queries.IGetOrderByIdQueryHandler, OrderService.Infrastructure.Queries.GetOrderByIdQueryHandler>();
-                    services.AddLogging();
-                    
-                    // Configurar ConnectionFactory para o CreateOrderCommandHandler
-                    services.AddSingleton<IConnectionFactory>(sp => new ConnectionFactory()
-                    {
-                        HostName = "localhost",
-                        DispatchConsumersAsync = true
-                    });
-                    services.AddScoped<OrderService.Application.Commands.CreateOrderCommandHandler>();
+                        services.AddDbContext<AppDbContext>((sp, options) =>
+                        {
+                            options.UseNpgsql(
+                                _dbContainer.GetConnectionString() + ";Pooling=false",
+                                npgsqlOptions => npgsqlOptions.MigrationsAssembly("OrderService.Infrastructure")
+                            );
+                        });
 
-                    // Remove o consumidor RabbitMQ para não interferir nos testes
-                    var consumerDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IHostedService) && d.ImplementationType?.Name == "RabbitMqOrderConsumer");
-                    if (consumerDescriptor != null)
-                        services.Remove(consumerDescriptor);
+                        // Register required handlers
+                        services.AddScoped<OrderService.Application.Queries.IGetOrderByIdQueryHandler, OrderService.Infrastructure.Queries.GetOrderByIdQueryHandler>();
+                        services.AddLogging();
+                        
+                        // Mock IMessageBusService
+                        var mockMessageBusService = new Mock<IMessageBusService>();
+                        mockMessageBusService
+                            .Setup(m => m.PublishAsync(It.IsAny<object>(), It.IsAny<string>()))
+                            .Returns(Task.CompletedTask);
+                            
+                        services.AddSingleton(mockMessageBusService.Object);
+
+                        // Register RabbitMqSettings
+                        var rabbitMqSettings = new RabbitMqSettings
+                        {
+                            HostName = "localhost",
+                            Port = 5672,
+                            Username = "guest",
+                            Password = "guest",
+                            QueueName = "orders"
+                        };
+                        
+                        services.AddSingleton(Options.Create(rabbitMqSettings));
+
+                        // Register command handlers
+                        services.AddScoped<OrderService.Application.Commands.CreateOrderCommandHandler>();
+
+                        // Remove RabbitMQ consumer to avoid interference with tests
+                        var consumerDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IHostedService) && d.ImplementationType?.Name == "RabbitMqOrderConsumer");
+                        if (consumerDescriptor != null)
+                            services.Remove(consumerDescriptor);
                 });
             });
 
-        // Aplica as migrações
+        // Apply migrations and ensure database is clean
         using (var scope = _factory.Services.CreateScope())
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             
-            // Garante que o banco de dados existe
-            await dbContext.Database.EnsureCreatedAsync();
-            
-            // Aplica as migrações
-            await dbContext.Database.MigrateAsync();
-            
-            // Verifica se as tabelas foram criadas
-            var connection = dbContext.Database.GetDbConnection();
-            await connection.OpenAsync();
-            using var command = connection.CreateCommand();
-            command.CommandText = "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'Orders');";
-            var tableExists = await command.ExecuteScalarAsync();
-            
-            if (tableExists is not bool tableExistsBool || !tableExistsBool)
+            try
             {
-                throw new Exception("A tabela 'Orders' não foi criada corretamente.");
+                // Ensure the database is created and migrated
+                await dbContext.Database.EnsureCreatedAsync();
+                
+                // Check if the Orders table exists
+                var connection = dbContext.Database.GetDbConnection();
+                await connection.OpenAsync();
+                using var command = connection.CreateCommand();
+                command.CommandText = "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'Orders');";
+                var tableExists = await command.ExecuteScalarAsync();
+                
+                if (tableExists is not bool tableExistsBool || !tableExistsBool)
+                {
+                    throw new Exception("A tabela 'Orders' não foi criada corretamente.");
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Erro ao configurar o banco de dados de teste", ex);
             }
         }
 

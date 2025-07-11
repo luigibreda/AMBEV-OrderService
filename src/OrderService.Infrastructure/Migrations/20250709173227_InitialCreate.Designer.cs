@@ -5,13 +5,13 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
-using OrderService.Infrastructure;
+using OrderService.Infrastructure.Data;
 
 #nullable disable
 
 namespace AMBEV_OrderService.Migrations
 {
-    [DbContext(typeof(AppDbContext))]
+    [DbContext(typeof(OrderService.Infrastructure.Data.AppDbContext))]
     [Migration("20250709173227_InitialCreate")]
     partial class InitialCreate
     {

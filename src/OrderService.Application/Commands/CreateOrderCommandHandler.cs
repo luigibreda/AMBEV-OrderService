@@ -1,31 +1,39 @@
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using MediatR;
 using Microsoft.Extensions.Logging;
-using RabbitMQ.Client;
-using System.Text.Json;
-using OrderService.Application.Commands;
+using OrderService.Application.DTOs;
+using OrderService.Application.Interfaces;
 
 namespace OrderService.Application.Commands
 {
-    public class CreateOrderCommandHandler
+    public class CreateOrderCommand : IRequest<Unit>
     {
-        private readonly ConnectionFactory _connectionFactory;
+        public string ExternalId { get; set; } = string.Empty;
+        public List<ProductRequest> Products { get; set; } = new();
+    }
+
+    public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Unit>
+    {
+        private readonly IMessageBusService _messageBusService;
         private readonly ILogger<CreateOrderCommandHandler> _logger;
 
-        public CreateOrderCommandHandler(ConnectionFactory connectionFactory, ILogger<CreateOrderCommandHandler> logger)
+        public CreateOrderCommandHandler(
+            IMessageBusService messageBusService,
+            ILogger<CreateOrderCommandHandler> logger)
         {
-            _connectionFactory = connectionFactory;
+            _messageBusService = messageBusService;
             _logger = logger;
         }
 
-        public void Handle(CreateOrderCommand command)
+        public async Task<Unit> Handle(CreateOrderCommand request, CancellationToken cancellationToken)
         {
-            // Exemplo de publicação na fila RabbitMQ
-            using var connection = _connectionFactory.CreateConnection();
-            using var channel = connection.CreateModel();
-            channel.QueueDeclare(queue: "orders", durable: true, exclusive: false, autoDelete: false, arguments: new Dictionary<string, object> { { "x-dead-letter-exchange", "orders.dlx" } });
-            var message = JsonSerializer.Serialize(command);
-            var body = System.Text.Encoding.UTF8.GetBytes(message);
-            channel.BasicPublish(exchange: "", routingKey: "orders", basicProperties: null, body: body);
-            _logger.LogInformation($"Order {command.ExternalId} published to queue.");
+            _logger.LogInformation("Pedido: {ExternalId} publicado na fila.", request.ExternalId);
+            
+            await _messageBusService.PublishAsync(request, "orders");
+            
+            return Unit.Value;
         }
     }
 }
