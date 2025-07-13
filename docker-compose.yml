@@ -1,86 +1,58 @@
+version: '3.8'
+
 services:
-  # Banco de dados PostgreSQL
   db:
     image: postgres:16-alpine
-    restart: always
     environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
       POSTGRES_DB: ambev_orders
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U admin -d ambev_orders"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ambev_orders"]
       interval: 5s
       timeout: 5s
       retries: 10
       start_period: 30s
 
-  # Message Broker RabbitMQ
   rabbitmq:
-    image: rabbitmq:3-management-alpine
-    hostname: rabbitmq
+    image: rabbitmq:3.12-management
     container_name: rabbitmq
-    restart: always
-    ports:
-      - "5672:5672"
-      - "15672:15672"
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 30s
 
-  # Aplicação principal
   orderservice:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    build: .
     container_name: orderservice
-    restart: unless-stopped
-    ports:
-      - "8080:80"
-      - "8081:443"
     depends_on:
       db:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    ports:
+      - "8080:80"
     environment:
-      # Configurações da aplicação
       ASPNETCORE_ENVIRONMENT: Production
-      ConnectionStrings__DefaultConnection: "Server=db;Port=5432;Database=ambev_orders;User Id=admin;Password=admin;Pooling=true;Command Timeout=60;"
+      ConnectionStrings__DefaultConnection: "Server=db;Port=5432;Database=ambev_orders;User Id=postgres;Password=postgres;Pooling=true;"
       ASPNETCORE_URLS: "http://+:80"
-      
-      # Configurações do RabbitMQ
       RabbitMQ__HostName: rabbitmq
       RabbitMQ__Port: 5672
       RabbitMQ__Username: guest
       RabbitMQ__Password: guest
       RabbitMQ__QueueName: orders
-      
-      # Habilita o Swagger em produção (opcional)
-      SWAGGER_ENABLED: "true"
-    
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
 
-# Volumes para persistência de dados
 volumes:
   pgdata:
