@@ -33,18 +33,23 @@ Para executar o projeto localmente, você precisará ter o [Docker](https://www.
     
     ```json
     {
-    "Logging": {
-        "LogLevel": {
-        "Default": "Information",
-        "Microsoft.AspNetCore": "Warning",
-        "Microsoft.EntityFrameworkCore": "Warning",
-        "Microsoft.EntityFrameworkCore.Database.Command": "Warning"
+        "Logging": {
+            "LogLevel": {
+            "Default": "Debug",
+            "Microsoft": "Warning",
+            "Microsoft.Hosting.Lifetime": "Information"
+            }
+        },
+        "ConnectionStrings": {
+            "DefaultConnection": "Host=db;Port=5432;Database=ambev_orders;Username=admin;Password=admin;"
+        },
+        "RabbitMQ": {
+            "HostName": "rabbitmq",
+            "Port": 5672,
+            "Username": "guest",
+            "Password": "guest",
+            "QueueName": "orders"
         }
-    },
-    "ConnectionStrings": {
-        "DefaultConnection": "Host=localhost;Port=5432;Database=ambev_orders;Username=admin;Password=admin"
-    },
-    "AllowedHosts": "*"
     }
     ```
 
