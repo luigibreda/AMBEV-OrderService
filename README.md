@@ -7,10 +7,11 @@ Este projeto implementa um serviço de gerenciamento de pedidos de alta performa
 O sistema é composto por três componentes principais e um banco de dados, orquestrados por uma fila de mensagens:
 
 1.  **Order Ingestion API (`OrdersController` - `POST /orders`):** Recebe os pedidos do Sistema Externo A e os publica imediatamente em uma fila de mensagens. Retorna `202 Accepted` para garantir a responsividade em alta carga.
-2.  **Message Broker (RabbitMQ):** Atua como um buffer durável, garantindo que os pedidos sejam enfileirados de forma segura e distribuídos para os consumidores.
+2.  **Message Broker (RabbitMQ):** Atua como um buffer durável, garantindo que os pedidos sejam enfileirados de forma segura e distribuídos para os consumidores, com suporte a Dead Letter Exchange para tratamento de falhas.
 3.  **Order Processor (Worker Service - `RabbitMqOrderConsumer`):** Consome as mensagens da fila, processa a lógica de negócio (cálculo de valor, verificação de duplicidade) e persiste os dados no banco de dados.
-4.  **Database (PostgreSQL):** Armazena os pedidos processados, garantindo consistência e integridade dos dados.
-5.  **Order Query API (`OrdersController` - `GET /orders`, `GET /orders/{externalId}`):** Fornece endpoints otimizados para o Sistema Externo B consultar os pedidos já processados.
+4.  **Cache Distribuído (Redis - Planejado):** Melhora o desempenho das consultas frequentes, reduzindo a carga no banco de dados principal. (A ser implementado)
+5.  **Database (PostgreSQL):** Armazena os pedidos processados, garantindo consistência e integridade dos dados, com índices otimizados para as consultas mais comuns.
+6.  **Order Query API (`OrdersController` - `GET /orders`, `GET /orders/{externalId}`):** Fornece endpoints otimizados para o Sistema Externo B consultar os pedidos já processados, com suporte a paginação e filtros.
 
 **Diagrama da Arquitetura:**
 ![Diagrama da Arquitetura](docs/screenshots/arquitetura.png) 
@@ -162,6 +163,81 @@ Este desenho reflete a maturidade e a robustez da solução proposta para lidar 
 
 ![Arquitetura Final Detalhada](docs/screenshots/arquitetura_final_detalhada.png)
 
+
+## Oportunidades de Melhoria e Próximos Passos
+
+**Nota sobre o estado atual:** Alguns dos itens listados abaixo não foram implementados devido a restrições de tempo, mas representam melhorias importantes para um ambiente de produção em larga escala.
+
+### 1. Implementação de Cache Distribuído com Redis
+- **Objetivo**: Melhorar o desempenho das consultas frequentes e reduzir a carga no banco de dados
+- **Benefícios**:
+  - Redução da latência das consultas
+  - Menor carga no banco de dados principal
+  - Melhor experiência do usuário final
+- **Implementação Sugerida**:
+  - Cache de pedidos recentes e mais acessados
+  - Invalidação de cache baseada em eventos
+  - Cache distribuído para alta disponibilidade
+
+### 2. Particionamento de Dados (Sharding)
+- **Objetivo**: Melhorar a escalabilidade horizontal para volumes extremamente altos
+- **Benefícios**:
+  - Distribuição uniforme da carga entre múltiplos nós
+  - Maior capacidade de processamento paralelo
+  - Isolamento de falhas
+- **Estratégias de Sharding**:
+  - Por faixa de IDs de pedido
+  - Por região geográfica
+  - Por período de tempo
+
+### 3. Monitoramento e Observabilidade Avançados
+- **Objetivo**: Melhor visibilidade do sistema em produção
+- **Implementação Sugerida**:
+  - Métricas detalhadas de performance (Prometheus + Grafana)
+  - Rastreamento distribuído (OpenTelemetry)
+  - Alertas proativos
+  - Dashboards em tempo real
+
+### 4. Resiliência e Tolerância a Falhas
+- **Objetivo**: Garantir a disponibilidade do serviço em cenários de falha
+- **Melhorias Propostas**:
+  - Circuit Breaker para chamadas externas
+  - Retry com backoff exponencial
+  - Bulkhead pattern para isolar falhas
+  - Timeouts configuráveis
+
+### 5. Otimizações de Banco de Dados
+- **Objetivo**: Melhorar a performance e eficiência do armazenamento
+- **Melhorias Propostas**:
+  - Particionamento de tabelas por período
+  - Índices otimizados para consultas frequentes
+  - Materialized views para relatórios
+  - Arquitetura de leituras escaláveis (read replicas)
+
+### 6. Automação de Escalabilidade
+- **Objetivo**: Ajuste automático de recursos baseado na carga
+- **Implementação Sugerida**:
+  - Auto-scaling baseado em métricas
+  - Escalabilidade automática de workers
+  - Balanceamento de carga inteligente
+
+### 7. Segurança Avançada
+- **Objetivo**: Fortalecer a segurança da aplicação
+- **Melhorias Propostas**:
+  - Autenticação e autorização robustas
+  - Criptografia em trânsito e em repouso
+  - Rate limiting e proteção contra DDoS
+  - Auditoria de acesso e logs de segurança
+
+### 8. Pipeline de Dados em Tempo Real
+- **Objetivo**: Habilitar análises em tempo real
+- **Implementação Sugerida**:
+  - Processamento de fluxo com Apache Kafka
+  - Análise em tempo real com Apache Flink
+  - Dashboard de métricas em tempo real
+
 ## Conclusão
 
 Este serviço de gerenciamento de pedidos foi projetado e validado para atender aos desafios de alta volumetria, com foco em disponibilidade através do desacoplamento assíncrono, consistência de dados garantida por regras de negócio e banco de dados, e escalabilidade comprovada pela capacidade de processamento observada.
+
+As melhorias propostas nesta seção representam oportunidades para elevar ainda mais a robustez, performance e confiabilidade do sistema, preparando-o para cenários de crescimento extremo e requisitos ainda mais desafiadores no futuro.
