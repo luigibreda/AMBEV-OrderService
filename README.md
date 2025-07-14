@@ -60,7 +60,10 @@ Para executar o projeto localmente, você precisará ter o [Docker](https://www.
 5.  **Acesse o RabbitMQ Management UI:**
     `http://localhost:15672` (Usuário: `guest`, Senha: `guest`)
 
-6.  **Ponto Chave: Endpoint de Teste de Carga (`/orders/generate-test-orders`)**
+6.  **Acesse o Frontend React:**
+    `http://localhost:3000` 
+
+7.  **Ponto Chave: Endpoint de Teste de Carga (`/orders/generate-test-orders`)**
     Como um diferencial para validar a capacidade do sistema, foi implementado um endpoint exclusivo para simular a ingestão de um grande volume de pedidos. Isso permite observar a performance, disponibilidade e resiliência em um cenário de alta carga.
 
     *   **Endpoint:** `POST /orders/generate-test-orders`
