@@ -86,6 +86,14 @@ Para garantir a qualidade, a manutenibilidade e a corretude da solução, o proj
 
 ---
 
+### Frontend em React
+
+O frontend foi desenvolvido em React para ilustrar minha habilidade tanto com backend quanto com frontend.
+
+![Frontend em React](docs/screenshots/frontend.png)
+
+------
+
 ### Exemplos de Testes Disponíveis
 
 ![Lista de testes disponíveis](docs/screenshots/resultado_testes.png)
