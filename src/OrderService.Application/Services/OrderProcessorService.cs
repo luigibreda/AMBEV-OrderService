@@ -1,11 +1,10 @@
 using System;
 using System.Threading.Tasks;
+using FluentValidation;
 using Microsoft.Extensions.Logging;
 using OrderService.Application.Commands;
-using OrderService.Application.DTOs;
-using OrderService.Domain.Enums;
+using OrderService.Application.Mappers;
 using OrderService.Domain.Interfaces;
-using OrderService.Domain.Models;
 
 namespace OrderService.Application.Services;
 
@@ -25,39 +24,14 @@ public class OrderProcessorService
     public async Task ProcessOrderAsync(CreateOrderCommand command)
     {
         _logger.LogInformation("Processando pedido {ExternalId}", command.ExternalId);
-        
+
         try
         {
-            // Verifica se o pedido já existe
-            var existingOrder = await _orderRepository.GetByExternalIdAsync(command.ExternalId);
-            if (existingOrder != null)
-            {
-                _logger.LogWarning("Pedido {ExternalId} já existe", command.ExternalId);
-                return;
-            }
-            
-            var order = new Order
-            {
-                ExternalId = command.ExternalId,
-                Status = OrderStatus.RECEIVED,
-                CreatedAt = DateTime.UtcNow
-            };
-            
-            foreach (var product in command.Products)
-            {
-                order.Products.Add(new Product
-                {
-                    Name = product.Name,
-                    Quantity = product.Quantity,
-                    UnitPrice = product.UnitPrice
-                });
-            }
-            
-            order.CalculateTotalValue();
-            
+            var order = command.ToOrder();
+
             await _orderRepository.AddAsync(order);
             var result = await _orderRepository.UnitOfWork.CommitAsync();
-            
+
             if (result)
             {
                 _logger.LogInformation("Pedido {ExternalId} processado com sucesso", command.ExternalId);
@@ -66,6 +40,10 @@ public class OrderProcessorService
             {
                 _logger.LogError("Falha ao salvar o pedido {ExternalId}", command.ExternalId);
             }
+        }
+        catch (ValidationException ex)
+        {
+            _logger.LogWarning("Falha na validação ao processar o pedido {ExternalId}: {Errors}", command.ExternalId, ex.Message);
         }
         catch (Exception ex)
         {

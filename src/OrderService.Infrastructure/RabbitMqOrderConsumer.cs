@@ -143,7 +143,7 @@ public class RabbitMqOrderConsumer : BackgroundService
                 ExternalId = orderRequest.ExternalId,
                 Status = OrderStatus.PROCESSING, // Status inicial mais adequado
                 CreatedAt = DateTime.UtcNow,
-                Products = orderRequest.Products.Select(p => new Product
+                Items = orderRequest.Items.Select(p => new OrderItem
                 {
                     Name = p.Name,
                     Quantity = p.Quantity,

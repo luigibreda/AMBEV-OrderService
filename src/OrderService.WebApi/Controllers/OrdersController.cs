@@ -2,12 +2,10 @@ using System.Text;
 using System.Text.Json;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using OrderService.Application.DTOs;
 using OrderService.Application.Commands;
 using OrderService.Application.Queries;
 using OrderService.Domain.Models;
-using OrderService.Infrastructure.Data;
 using OrderService.Infrastructure.Queries;
 using RabbitMQ.Client;
 
@@ -19,19 +17,16 @@ namespace OrderService.WebApi.Controllers;
 public class OrdersController : ControllerBase
 {
     private readonly IMediator _mediator;
-    private readonly AppDbContext _context;
     private readonly ILogger<OrdersController> _logger;
     private readonly IConnectionFactory _connectionFactory;
     private readonly Random _random = new();
 
     public OrdersController(
         IMediator mediator,
-        AppDbContext context,
         ILogger<OrdersController> logger,
         IConnectionFactory connectionFactory)
     {
         _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
-        _context = context ?? throw new ArgumentNullException(nameof(context));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
     }
@@ -49,7 +44,7 @@ public class OrdersController : ControllerBase
             var command = new CreateOrderCommand
             {
                 ExternalId = request.ExternalId,
-                Products = request.Products
+                Items = request.Items
             };
             
             await _mediator.Send(command, cancellationToken);
@@ -72,58 +67,10 @@ public class OrdersController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetOrders([FromQuery] OrderQueryParams query)
+    public async Task<IActionResult> GetOrders([FromQuery] ListOrdersQuery query, CancellationToken cancellationToken)
     {
-        var queryable = _context.Set<Order>()
-            .Include(o => o.Products)
-            .AsQueryable();
-
-        if (query.StartDate.HasValue)
-        {
-            var startUtc = DateTime.SpecifyKind(query.StartDate.Value, DateTimeKind.Utc);
-            queryable = queryable.Where(o => o.CreatedAt >= startUtc);
-        }
-
-        if (query.EndDate.HasValue)
-        {
-            var endUtc = DateTime.SpecifyKind(
-query.EndDate.Value.Date.AddDays(1).AddTicks(-1), // Ajusta para o último instante do dia
-                DateTimeKind.Utc
-            );
-
-            queryable = queryable.Where(o => o.CreatedAt <= endUtc);
-        }
-
-        var totalItems = await queryable.CountAsync();
-
-        var orders = await queryable
-            .OrderByDescending(o => o.CreatedAt)
-            .Skip((query.Page - 1) * query.PageSize)
-            .Take(query.PageSize)
-            .ToListAsync();
-
-        var response = orders.Select(order => new OrderResponse
-        {
-            ExternalId = order.ExternalId,
-            TotalValue = order.TotalValue,
-            Status = order.Status.ToString(),
-            CreatedAt = order.CreatedAt,
-            Products = order.Products.Select(p => new ProductResponse
-            {
-                Name = p.Name,
-                Quantity = p.Quantity,
-                UnitPrice = p.UnitPrice,
-                Total = p.Total
-            }).ToList()
-        });
-
-        return Ok(new
-        {
-            totalItems,
-            query.Page,
-            query.PageSize,
-            data = response
-        });
+        var result = await _mediator.Send(query, cancellationToken);
+        return Ok(result);
     }
 
     [HttpPost("generate-test-orders")] 
@@ -193,12 +140,12 @@ query.EndDate.Value.Date.AddDays(1).AddTicks(-1), // Ajusta para o último insta
     // Método auxiliar para gerar um OrderRequest aleatório
     private OrderRequest GenerateRandomOrderRequest(int productsPerOrder)
     {
-        var products = new List<ProductRequest>();
+        var items = new List<OrderItemRequest>();
         var numberOfProducts = _random.Next(1, Math.Max(2, productsPerOrder * 2 - 1)); // Varia de 1 até quase o dobro do pedido
 
         for (int i = 0; i < numberOfProducts; i++)
         {
-            products.Add(new ProductRequest
+            items.Add(new OrderItemRequest
             {
                 Name = $"Product_{Guid.NewGuid().ToString().Substring(0, 8)}",
                 Quantity = _random.Next(1, 5),
@@ -209,7 +156,7 @@ query.EndDate.Value.Date.AddDays(1).AddTicks(-1), // Ajusta para o último insta
         return new OrderRequest
         {
             ExternalId = $"TEST_ORDER_{Guid.NewGuid()}",
-            Products = products
+            Items = items
         };
     }
 
