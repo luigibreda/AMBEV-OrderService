@@ -10,11 +10,11 @@ public class OrderTests
     {
         var order = new Order
         {
-            Products = new List<Product>
+            Items = new List<OrderItem>
             {
-                new Product { Quantity = 2, UnitPrice = 10.50m }, // Total = 21.00
-                new Product { Quantity = 1, UnitPrice = 5.00m },  // Total = 5.00
-                new Product { Quantity = 3, UnitPrice = 1.50m }   // Total = 4.50
+                new OrderItem { Quantity = 2, UnitPrice = 10.50m }, // Total = 21.00
+                new OrderItem { Quantity = 1, UnitPrice = 5.00m },  // Total = 5.00
+                new OrderItem { Quantity = 3, UnitPrice = 1.50m }   // Total = 4.50
             }
         };
 
@@ -25,11 +25,11 @@ public class OrderTests
     }
 
     [Fact]
-    public void CalculateTotalValue_Should_BeZero_When_ProductsListIsEmpty()
+    public void CalculateTotalValue_Should_BeZero_When_ItemsListIsEmpty()
     {
         var order = new Order
         {
-            Products = new List<Product>()
+            Items = new List<OrderItem>()
         };
 
         order.CalculateTotalValue();

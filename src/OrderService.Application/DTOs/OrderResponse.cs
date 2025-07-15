@@ -1,6 +1,6 @@
 namespace OrderService.Application.DTOs;
 
-public class ProductResponse
+public class OrderItemResponse
 {
     public string Name { get; set; } = string.Empty;
     public int Quantity { get; set; }
@@ -14,5 +14,5 @@ public class OrderResponse
     public decimal TotalValue { get; set; }
     public string Status { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
-    public List<ProductResponse> Products { get; set; } = new();
+    public List<OrderItemResponse> Items { get; set; } = new();
 }

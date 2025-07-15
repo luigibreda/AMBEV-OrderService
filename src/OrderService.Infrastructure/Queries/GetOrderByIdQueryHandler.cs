@@ -21,7 +21,7 @@ namespace OrderService.Infrastructure.Queries
             if (query == null) throw new ArgumentNullException(nameof(query));
             
             var order = await _context.Orders
-                .Include(o => o.Products)
+                .Include(o => o.Items)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(o => o.ExternalId == query.ExternalId, cancellationToken);
 
@@ -34,7 +34,7 @@ namespace OrderService.Infrastructure.Queries
                 TotalValue = order.TotalValue,
                 Status = order.Status.ToString(),
                 CreatedAt = order.CreatedAt,
-                Products = order.Products.Select(p => new ProductResponse
+                Items = order.Items.Select(p => new OrderItemResponse
                 {
                     Name = p.Name,
                     Quantity = p.Quantity,

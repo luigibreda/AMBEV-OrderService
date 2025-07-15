@@ -11,7 +11,7 @@ namespace OrderService.Application.Commands
     public class CreateOrderCommand : IRequest<Unit>
     {
         public string ExternalId { get; set; } = string.Empty;
-        public List<ProductRequest> Products { get; set; } = new();
+        public List<OrderItemRequest> Items { get; set; } = new();
     }
 
     public class CreateOrderCommandHandler : IRequestHandler<CreateOrderCommand, Unit>

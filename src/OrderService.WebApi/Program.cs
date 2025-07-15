@@ -7,14 +7,17 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using OrderService.Application.Commands;
+using OrderService.Application.DTOs;
 using OrderService.Application.Interfaces;
 using OrderService.Application.Queries;
 using OrderService.Application.Services;
+using OrderService.Application.Behaviors;
 using OrderService.Domain.Interfaces;
 using OrderService.Infrastructure;
 using OrderService.Infrastructure.Data;
 using OrderService.Infrastructure.Queries;
 using OrderService.Infrastructure.Repositories;
+using FluentValidation;
 using OrderService.Infrastructure.Services;
 using OrderService.Infrastructure.Settings;
 using OrderService.WebApi.Controllers;
@@ -29,7 +32,13 @@ builder.Services.AddSwaggerGen();
 
 // Registra o MediatR com todos os handlers da camada de Application
 builder.Services.AddMediatR(cfg => 
-    cfg.RegisterServicesFromAssembly(typeof(CreateOrderCommand).Assembly));
+{
+    cfg.RegisterServicesFromAssembly(typeof(CreateOrderCommand).Assembly);
+    cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
+});
+
+// Adiciona o FluentValidation
+builder.Services.AddValidatorsFromAssembly(typeof(CreateOrderCommand).Assembly);
 
 // Configuração do AutoMapper
 builder.Services.AddAutoMapper(typeof(Program).Assembly);
@@ -41,6 +50,8 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString, 
         b => b.MigrationsAssembly("OrderService.Infrastructure")));
+
+builder.Services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<AppDbContext>());
 
 // Registro dos repositórios
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();

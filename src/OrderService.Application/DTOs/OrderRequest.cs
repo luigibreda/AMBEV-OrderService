@@ -1,6 +1,6 @@
 namespace OrderService.Application.DTOs;
 
-public class ProductRequest
+public class OrderItemRequest
 {
     public string Name { get; set; } = string.Empty;
     public int Quantity { get; set; }
@@ -10,5 +10,5 @@ public class ProductRequest
 public class OrderRequest
 {
     public string ExternalId { get; set; } = string.Empty;
-    public List<ProductRequest> Products { get; set; } = new();
+    public List<OrderItemRequest> Items { get; set; } = new();
 }
