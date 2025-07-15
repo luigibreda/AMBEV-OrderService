@@ -73,14 +73,12 @@ Para executar o projeto localmente, você precisará ter o [Docker](https://www.
     ```
     Isso irá construir as imagens Docker e iniciar todos os contêineres necessários. Aguarde alguns segundos até que todos os serviços estejam em execução.
 
-4.  **Acesse o Swagger UI:**
-    `https://localhost:[PORTA_DA_SUA_APLICACAO]/swagger` (Ex: `https://localhost:7123/swagger`)
+4.  **Acesse os serviços:**
+    Após a inicialização, os seguintes serviços estarão disponíveis nos links abaixo:
 
-5.  **Acesse o RabbitMQ Management UI:**
-    `http://localhost:15672` (Usuário: `guest`, Senha: `guest`)
-
-6.  **Acesse o Frontend React:**
-    `http://localhost:3000` 
+    - **Backend (Swagger UI):** [http://localhost:8080/swagger](http://localhost:8080/swagger)
+    - **Frontend (React App):** [http://localhost:3000](http://localhost:3000)
+    - **RabbitMQ Management:** [http://localhost:15672](http://localhost:15672) (Usuário: `guest`, Senha: `guest`) 
 
 7.  **Ponto Chave: Endpoint de Teste de Carga (`/orders/generate-test-orders`)**
     Como um diferencial para validar a capacidade do sistema, foi implementado um endpoint exclusivo para simular a ingestão de um grande volume de pedidos. Isso permite observar a performance, disponibilidade e resiliência em um cenário de alta carga.
@@ -171,7 +169,7 @@ A solução demonstra uma taxa de processamento robusta, superando o requisito m
 
 ![Performance Final de Processamento](docs/screenshots/log_tempo_insercao_banco.png) 
 
-*Captura de tela das métricas de performance do `RabbitMqOrderConsumer` após processar um lote de **2010** pedidos:*
+*Captura de tela das métricas de performance do `RabbitMqOrderConsumer` após processar um lote de **2010** pedidos:
 -   **Total de Pedidos Processados:** 2010
 -   **Tempo Total de Processamento:** 88.61 segundos (88609 ms)
 -   **Taxa Média de Processamento:** 22.68 pedidos/segundo
@@ -194,25 +192,11 @@ Diagrama da arquitetura atual do sistema, mostrando a integração entre os comp
 
 ## Próximos Passos
 
-1. **Cache com Redis**
-   - Melhorar performance de consultas frequentes
-   - Reduzir carga no banco de dados
-   - Implementar invalidação automática
+Algumas ideias para evoluir o projeto e aprofundar a análise de performance:
 
-2. **Particionamento de Dados**
-   - Suportar volumes ainda maiores
-   - Distribuir carga entre múltiplos nós
-   - Isolar falhas por partição
-
-3. **Monitoramento**
-   - Implementar métricas detalhadas
-   - Configurar alertas proativos
-   - Criar dashboards em tempo real
-
-4. **Segurança**
-   - Reforçar autenticação e autorização
-   - Implementar criptografia de dados
-   - Configurar proteção contra ataques
+- **Escalabilidade do Consumidor:** Aumentar o número de réplicas do `RabbitMqOrderConsumer` no `docker-compose.yml` para processar a fila em paralelo e medir o ganho na taxa de processamento.
+- **Cache com Redis:** Implementar cache nas consultas da API de leitura para diminuir a carga no banco de dados e melhorar a latência em cenários de alta consulta.
+- **Monitoramento com Prometheus/Grafana:** Integrar a aplicação para expor métricas detalhadas (pedidos/segundo, latência, etc.) e criar dashboards para visualização em tempo real.
 
 ## Conclusão
 

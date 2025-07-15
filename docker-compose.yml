@@ -52,6 +52,12 @@ services:
         condition: service_healthy
     ports:
       - "8080:80"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__DefaultConnection: "Server=db;Port=5432;Database=ambev_orders;User Id=postgres;Password=postgres;Pooling=true;"
