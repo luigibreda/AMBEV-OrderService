@@ -88,8 +88,9 @@ builder.Services.AddSingleton<IConnectionFactory>(sp =>
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-options.JsonSerializerOptions.PropertyNamingPolicy = null; // Mantém o padrão PascalCase
+        options.JsonSerializerOptions.PropertyNamingPolicy = null; // Mantém o padrão PascalCase
     });
+builder.Services.AddHealthChecks();
 
 // Configuração do Swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -273,6 +274,13 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthorization();
 app.MapControllers();
+app.MapHealthChecks("/health");
+// Aplica as migrations pendentes do EF Core ao iniciar a aplicação
+using (var scope = app.Services.CreateScope()){
+    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    dbContext.Database.Migrate();
+}
+
 app.Run();
 
 // Torna a classe Program acessível para os testes
